@@ -25,7 +25,7 @@ Very simple, yet effective.
 ## Used software
 
 [Huaweicalc](https://github.com/forth32/huaweicalc) couresy of forth32  
-**imei_generator** courtesy of Egor Grhko  
+**imei_generator** courtesy of Egor Grushko  
 **atc** courtesy of rust3028
 
 **Contributions are welcome**.

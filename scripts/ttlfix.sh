@@ -7,8 +7,11 @@ if [[ "$1" == "get" ]]
 then
     [[ "$CURRENT_MODE" == "0" ]]   && exit 0
     [[ "$CURRENT_MODE" == "1" ]]   && exit 1
-    [[ "$CURRENT_MODE" == "64" ]]   && exit 1
-    [[ "$CURRENT_MODE" == "128" ]]   && exit 2
+    [[ "$CURRENT_MODE" == "64" ]]  && exit 1
+    [[ "$CURRENT_MODE" == "128" ]] && exit 2
+
+    # error
+    exit -1
 fi
 
 if [[ "$1" == "set_next" ]]

@@ -30,6 +30,9 @@ then
     [[ "$CURRENT_MODE" == "0302" ]] && exit 4
     [[ "$CURRENT_MODE" == "0301" ]] && exit 5
     [[ "$CURRENT_MODE" == "0201" ]] && exit 6
+
+    # error
+    exit -1
 fi
 
 if [[ "$1" == "set_next" ]]
@@ -43,4 +46,3 @@ then
     [[ "$CURRENT_MODE" == "0201" ]] && echo -e "$NETWORK_AUTO\r" > /dev/appvcom && echo 00 > /var/radio_mode
     /system/bin/sleep 3
 fi
-

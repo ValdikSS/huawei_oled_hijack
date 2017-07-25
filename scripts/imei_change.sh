@@ -26,21 +26,19 @@ then
     exit -1
 fi
 
-CURRENT_IMEI_CUT="$(echo $CURRENT_IMEI | cut -c 1-4)"
+CURRENT_IMEI_CUT="$(echo $CURRENT_IMEI | cut -c 1-8)"
 echo $CURRENT_IMEI_CUT
-
-if [[ "$CURRENT_IMEI_CUT" == "8606" ]]
-then
-    echo $CURRENT_IMEI > /online/imei_backup
-fi
 
 echo $CURRENT_IMEI
 
 if [[ "$1" == "get" ]]
 then
-    [[ "$CURRENT_IMEI_CUT" == "8606" ]] && exit 0
-    [[ "$CURRENT_IMEI_CUT" == "3542" ]] && exit 1
-    [[ "$CURRENT_IMEI_CUT" == "3536" ]] && exit 2
+    [[ "$CURRENT_IMEI_CUT" == "35428207" ]] && exit 1
+    [[ "$CURRENT_IMEI_CUT" == "35365206" ]] && exit 2
+
+    # special case for factory imei
+    echo $CURRENT_IMEI > /online/imei_backup
+    exit 0
 fi
 
 if [[ "$1" == "set_next" ]]
@@ -61,10 +59,12 @@ then
     then
         exit -3
     fi
-    #exit 0
-    [[ "$CURRENT_IMEI_CUT" == "8606" ]] && echo -e "$IMEI_SET_COMMAND=\"$IMEI_ANDROID\"\r" > /dev/appvcom && echo $IMEI_ANDROID > /var/current_imei
-    [[ "$CURRENT_IMEI_CUT" == "3542" ]] && echo -e "$IMEI_SET_COMMAND=\"$IMEI_WINPHONE\"\r" > /dev/appvcom && echo $IMEI_WINPHONE > /var/current_imei
-    [[ "$CURRENT_IMEI_CUT" == "3536" ]] && echo -e "$IMEI_SET_COMMAND=\"$IMEI_BACKUP\"\r" > /dev/appvcom && echo $IMEI_BACKUP > /var/current_imei
-    
+
+    [[ "$CURRENT_IMEI_CUT" == "35428207" ]] && echo -e "$IMEI_SET_COMMAND=\"$IMEI_WINPHONE\"\r" > /dev/appvcom && echo $IMEI_WINPHONE > /var/current_imei && exit 0
+    [[ "$CURRENT_IMEI_CUT" == "35365206" ]] && echo -e "$IMEI_SET_COMMAND=\"$IMEI_BACKUP\"\r" > /dev/appvcom && echo $IMEI_BACKUP > /var/current_imei && exit 0
+
+    # special case for factory imei
+    echo -e "$IMEI_SET_COMMAND=\"$IMEI_ANDROID\"\r" > /dev/appvcom && echo $IMEI_ANDROID > /var/current_imei
+
 fi
 

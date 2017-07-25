@@ -22,4 +22,10 @@ Custom menu is drawn in "Device Information" page, hijacking "Homepage" string. 
 
 Very simple, yet effective.
 
+## Used software
+
+[Huaweicalc](https://github.com/forth32/huaweicalc) couresy of forth32  
+**imei_generator** courtesy of Egor Grhko
+**atc** courtesy of rust3028
+
 **Contributions are welcome**.

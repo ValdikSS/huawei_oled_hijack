@@ -178,7 +178,7 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
 
     fprintf(stderr, "Trying to create menu\n");
 
-    if (current_item == 0) {
+    if (current_item == 0 && char_list_size >= 3) {
         snprintf(buf, 1024 - 1,
              "  > %s\n    %s\n    %s\n",
              (mapping[current_item]),
@@ -186,7 +186,7 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
              ((char_list_size >= 3) ? mapping[current_item + 2] : nothing)
         );
     }
-    else if (current_item == char_list_size - 1) {
+    else if (current_item == char_list_size - 1 && char_list_size >= 3) {
         snprintf(buf, 1024 - 1,
              "    %s\n    %s\n  > %s\n",
              ((current_item >= 2 && char_list_size > 2) ? mapping[current_item - 2] : nothing),
@@ -199,7 +199,7 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
             "    %s\n  > %s\n    %s\n",
             ((current_item > 0) ? mapping[current_item - 1] : nothing),
             (mapping[current_item]),
-            ((current_item < char_list_size) ? mapping[current_item + 1] : nothing)
+            ((current_item < char_list_size && mapping[current_item + 1]) ? mapping[current_item + 1] : nothing)
         );
     }
 }

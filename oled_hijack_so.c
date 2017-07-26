@@ -51,6 +51,7 @@ static const char *scripts[] = {
     "/app/bin/oled_hijack/radio_mode.sh",
     "/app/bin/oled_hijack/ttlfix.sh",
     "/app/bin/oled_hijack/imei_change.sh",
+    "/app/bin/oled_hijack/remote_access.sh",
     NULL
 };
 
@@ -88,6 +89,18 @@ static const char *imei_change_mapping[] = {
     NULL
 };
 
+static const char *remote_access_mapping[] = {
+    // 0
+    "Web, Telnet, ADB",
+    // 1
+    "Web only",
+    // 2
+    "Telnet & ADB only",
+    // 3
+    "All disabled",
+    NULL
+};
+
 static const char *enabled_disabled_mapping[] = {
     // 0
     "Disabled",
@@ -100,6 +113,7 @@ struct menu_s {
     uint8_t radio_mode;
     uint8_t ttlfix;
     uint8_t imei_change;
+    uint8_t remote_access;
 } menu_state;
 
 /* *************************************** */
@@ -150,6 +164,9 @@ static void update_menu_state() {
                 break;
             case 2:
                 menu_state.imei_change = ret;
+                break;
+            case 3:
+                menu_state.remote_access = ret;
                 break;
         }
     }
@@ -279,6 +296,7 @@ int sprintf(char *str, const char *format, ...) {
     char network_mode_buf[1024];
     char ttlfix_buf[1024];
     char imei_change_buf[1024];
+    char remote_access_buf[1024];
 
     va_list args;
     va_start(args, format);
@@ -306,13 +324,16 @@ int sprintf(char *str, const char *format, ...) {
         create_menu_item(network_mode_buf, network_mode_mapping, menu_state.radio_mode);
         create_menu_item(ttlfix_buf, ttlfix_mapping, menu_state.ttlfix);
         create_menu_item(imei_change_buf, imei_change_mapping, menu_state.imei_change);
+        create_menu_item(remote_access_buf, remote_access_mapping, menu_state.remote_access);
         snprintf(str, 999,
                  "# Network Mode:\n%s" \
                  "# TTL Mangling:\n%s" \
-                 "# Device IMEI:\n%s",
+                 "# Device IMEI:\n%s" \
+                 "# Remote Access:\n%s",
                  network_mode_buf,
                  ttlfix_buf,
-                 imei_change_buf
+                 imei_change_buf,
+                 remote_access_buf
         );
         //fprintf(stderr, "%s\n",);
     }

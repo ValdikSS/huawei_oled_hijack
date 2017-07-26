@@ -10,8 +10,9 @@ Currently this library adds 3 new menu items:
  (Auto, GSM Only, UMTS Only, LTE Only, LTE -> UMTS, LTE -> GSM, UMTS -> GSM)
 * **TTL Mangler** (set TTL of outbound packets to 64 or 128)
 * **IMEI Changer** (switch between stock, random Android and random Windows Phone IMEI)
+* **Remote Access Control** (block telnet, ADB and web interface from being accessed over Wi-Fi and USB)
 
-![Screenshot 1](https://i.imgur.com/LioaPph.png) ![Screenshot 2](https://i.imgur.com/Z8UlVX4.png) ![Screenshot 3](https://i.imgur.com/mDXC7Yc.png) ![Screenshot 4](https://i.imgur.com/nR6fORk.png) ![Screenshot 5](https://i.imgur.com/hDS5V3O.png)
+![Screenshot 1](https://i.imgur.com/LioaPph.png) ![Screenshot 2](https://i.imgur.com/Z8UlVX4.png) ![Screenshot 3](https://i.imgur.com/mDXC7Yc.png) ![Screenshot 4](https://i.imgur.com/nR6fORk.png) ![Screenshot 5](https://i.imgur.com/hDS5V3O.png) ![Screenshot 6](https://i.imgur.com/ekUsutI.png)
 
 ## How does it work
 This library hijacks `sprintf()`, `osa_print_log_ex()` and `register_notify_handler()`.

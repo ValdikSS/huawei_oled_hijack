@@ -1,7 +1,7 @@
 Huawei OLED hijacking library
 =============================
 
-This library adds advanced menu to the OLED display of Huawei E5372 porable LTE router (and probably others).  
+This library adds advanced menu to the OLED display of Huawei E5372 porable LTE router (and probably E5577, E5377, E5786).  
 This is achieved by hijacking certain library calls in the "oled" executable file.
 
 Currently this library adds 3 new menu items:

@@ -271,16 +271,18 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
     
     if (*g_current_page == PAGE_INFORMATION) {
         if (first_info_screen && first_info_screen != *g_current_Info_page) {
-            fprintf(stderr, "We're not on a main info screen!\n");
-            if (action == BUTTON_POWER) {
-                // button pressed
-                fprintf(stderr, "BUTTON PRESSED!\n");
-                handle_menu_state_change(current_infopage_item);
-                leave_and_enter_menu(current_infopage_item);
-                return notify_handler_async_real(subsystemid, BUTTON_MENU, subaction);
-            }
-            else if (action == BUTTON_MENU) {
-                current_infopage_item++;
+            if (subsystemid == SUBSYSTEM_GPIO) {
+                fprintf(stderr, "We're not on a main info screen!\n");
+                if (action == BUTTON_POWER) {
+                    // button pressed
+                    fprintf(stderr, "BUTTON PRESSED!\n");
+                    handle_menu_state_change(current_infopage_item);
+                    leave_and_enter_menu(current_infopage_item);
+                    return notify_handler_async_real(subsystemid, BUTTON_MENU, subaction);
+                }
+                else if (action == BUTTON_MENU) {
+                    current_infopage_item++;
+                }
             }
         }
         else {

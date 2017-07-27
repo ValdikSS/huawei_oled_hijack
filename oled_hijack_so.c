@@ -15,6 +15,7 @@
 
 #define PAGE_INFORMATION 1
 #define SUBSYSTEM_GPIO 21002
+#define EVT_OLED_WIFI_WAKEUP 14026
 #define BUTTON_POWER 8
 #define BUTTON_MENU 9
 
@@ -255,6 +256,13 @@ static void leave_and_enter_menu(int advance) {
 
 static int notify_handler_async(int subsystemid, int action, int subaction) {
     fprintf(stderr, "notify_handler_async: %d, %d, %x\n", subsystemid, action, subaction);
+
+    if (subsystemid == EVT_OLED_WIFI_WAKEUP) {
+        // Do NOT notify "oled" of EVT_OLED_WIFI_WAKEUP event.
+        // Fixes "exiting sleep mode" on every button
+        // if Wi-Fi is completely disabled in web interface.
+        return 0;
+    }
     
     if (*g_current_page == PAGE_INFORMATION) {
         if (first_info_screen && first_info_screen != *g_current_Info_page) {

@@ -1,6 +1,6 @@
 #!/system/bin/busybox sh
 
-CURRENT_MODE=$(cat /etc/fix_ttl)
+CURRENT_MODE="$(cat /etc/fix_ttl)"
 echo $CURRENT_MODE
 
 if [[ "$1" == "get" ]]
@@ -11,7 +11,7 @@ then
     [[ "$CURRENT_MODE" == "128" ]] && exit 2
 
     # error
-    exit -1
+    exit 255
 fi
 
 if [[ "$1" == "set_next" ]]

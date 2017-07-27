@@ -6,6 +6,17 @@ ATC="/app/bin/oled_hijack/atc.sh"
 HUAWEICALC="/app/bin/oled_hijack/huaweicalc"
 IMEI_GENERATOR="/app/bin/oled_hijack/imei_generator"
 
+dataunlock () {
+    DATALOCK_CODE="$($HUAWEICALC -3 $CURRENT_IMEI)"
+    if [[ "$DATALOCK_CODE" != "" ]]
+    then
+        echo -e "AT^DATALOCK=\"$DATALOCK_CODE\"\r" > /dev/appvcom
+        echo -e "Datalock:" "AT^DATALOCK=\"$DATALOCK_CODE\"\r"
+    else
+        exit 254
+    fi
+}
+
 # IMEI caching to prevent menu slowdowns
 if [ ! -f "/var/current_imei" ]
 then
@@ -23,11 +34,10 @@ fi
 
 if [[ "$CURRENT_IMEI" == "" ]]
 then
-    exit -1
+    exit 255
 fi
 
 CURRENT_IMEI_CUT="$(echo $CURRENT_IMEI | cut -c 1-8)"
-echo $CURRENT_IMEI_CUT
 
 echo $CURRENT_IMEI
 
@@ -41,23 +51,22 @@ then
     exit 0
 fi
 
+if [[ "$1" == "dataunlock" ]]
+then
+    dataunlock
+    exit 0
+fi
+
 if [[ "$1" == "set_next" ]]
 then
-    DATALOCK_CODE="$($HUAWEICALC -3 $CURRENT_IMEI)"
-    if [[ "$DATALOCK_CODE" != "" ]]
-    then
-        echo -e "AT^DATALOCK=\"$DATALOCK_CODE\"\r" > /dev/appvcom
-        echo -e "Datalock:" "AT^DATALOCK=\"$DATALOCK_CODE\"\r"
-    else
-        exit -2
-    fi
-    
+    dataunlock
+
     IMEI_ANDROID="$($IMEI_GENERATOR -m 35428207)"
     IMEI_WINPHONE="$($IMEI_GENERATOR -m 35365206)"
     IMEI_BACKUP="$(cat /online/imei_backup)"
     if [[ "$IMEI_BACKUP" == "" ]]
     then
-        exit -3
+        exit 253
     fi
 
     [[ "$CURRENT_IMEI_CUT" == "35428207" ]] && echo -e "$IMEI_SET_COMMAND=\"$IMEI_WINPHONE\"\r" > /dev/appvcom && echo $IMEI_WINPHONE > /var/current_imei && exit 0

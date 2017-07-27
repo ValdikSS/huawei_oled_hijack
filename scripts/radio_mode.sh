@@ -32,7 +32,7 @@ then
     [[ "$CURRENT_MODE" == "0201" ]] && exit 6
 
     # error
-    exit -1
+    exit 255
 fi
 
 if [[ "$1" == "set_next" ]]

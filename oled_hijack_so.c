@@ -53,6 +53,7 @@ static const char *scripts[] = {
     "/app/bin/oled_hijack/ttlfix.sh",
     "/app/bin/oled_hijack/imei_change.sh",
     "/app/bin/oled_hijack/remote_access.sh",
+    "/app/bin/oled_hijack/no_battery.sh",
     NULL
 };
 
@@ -115,6 +116,7 @@ struct menu_s {
     uint8_t ttlfix;
     uint8_t imei_change;
     uint8_t remote_access;
+    uint8_t no_battery;
 } menu_state;
 
 /* *************************************** */
@@ -168,6 +170,9 @@ static void update_menu_state() {
                 break;
             case 3:
                 menu_state.remote_access = ret;
+                break;
+            case 4:
+                menu_state.no_battery = ret;
                 break;
         }
     }
@@ -305,6 +310,7 @@ int sprintf(char *str, const char *format, ...) {
     char ttlfix_buf[1024];
     char imei_change_buf[1024];
     char remote_access_buf[1024];
+    char no_battery_buf[1024];
 
     va_list args;
     va_start(args, format);
@@ -333,15 +339,18 @@ int sprintf(char *str, const char *format, ...) {
         create_menu_item(ttlfix_buf, ttlfix_mapping, menu_state.ttlfix);
         create_menu_item(imei_change_buf, imei_change_mapping, menu_state.imei_change);
         create_menu_item(remote_access_buf, remote_access_mapping, menu_state.remote_access);
+        create_menu_item(no_battery_buf, enabled_disabled_mapping, menu_state.no_battery);
         snprintf(str, 999,
                  "# Network Mode:\n%s" \
                  "# TTL Mangling:\n%s" \
                  "# Device IMEI:\n%s" \
-                 "# Remote Access:\n%s",
+                 "# Remote Access:\n%s" \
+                 "# Work w/o Battery:\n%s",
                  network_mode_buf,
                  ttlfix_buf,
                  imei_change_buf,
-                 remote_access_buf
+                 remote_access_buf,
+                 no_battery_buf
         );
         //fprintf(stderr, "%s\n",);
     }
@@ -365,7 +374,7 @@ int osa_print_log_ex(char *subsystem, char *sourcefile, int line,
     }
     else {
         first_info_screen = 0;
-    }    
+    }
 
     return 0;
 }

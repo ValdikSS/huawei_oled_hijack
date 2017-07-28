@@ -1,7 +1,7 @@
 #!/system/bin/busybox sh
 
 CONF_FILE="/data/remote_access"
-CURRENT_MODE=$(cat $CONF_FILE)
+CURRENT_MODE="$(cat $CONF_FILE)"
 echo $CURRENT_MODE
 
 enable_all () {
@@ -54,7 +54,7 @@ fi
 
 if [[ "$1" == "set_next" ]]
 then
-    if [[ "$CURRENT_MODE" == "0" -o "$CURRENT_MODE" == "" ]]; then
+    if [[ "$CURRENT_MODE" == "0" || "$CURRENT_MODE" == "" ]]; then
         CURRENT_MODE="1" && echo "1" > $CONF_FILE
     elif [[ "$CURRENT_MODE" == "1" ]]; then
         CURRENT_MODE="2" && echo "2" > $CONF_FILE
@@ -66,4 +66,3 @@ then
 
     handle_state
 fi
-

@@ -54,7 +54,7 @@ fi
 
 if [[ "$1" == "set_next" ]]
 then
-    if [[ "$CURRENT_MODE" == "0" || "$CURRENT_MODE" == "" ]]; then
+    if [[ "$CURRENT_MODE" == "0" ]] || [[ "$CURRENT_MODE" == "" ]]; then
         CURRENT_MODE="1" && echo "1" > $CONF_FILE
     elif [[ "$CURRENT_MODE" == "1" ]]; then
         CURRENT_MODE="2" && echo "2" > $CONF_FILE

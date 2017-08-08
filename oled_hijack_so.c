@@ -16,6 +16,8 @@
 #define PAGE_INFORMATION 1
 #define SUBSYSTEM_GPIO 21002
 #define EVT_OLED_WIFI_WAKEUP 14026
+#define EVT_DIALUP_REPORT_CONNECT_STATE 4037
+#define DIAL_STATE_CONNECTING 900
 #define BUTTON_POWER 8
 #define BUTTON_MENU 9
 
@@ -266,6 +268,15 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
         // Do NOT notify "oled" of EVT_OLED_WIFI_WAKEUP event.
         // Fixes "exiting sleep mode" on every button
         // if Wi-Fi is completely disabled in web interface.
+        return 0;
+    }
+
+    else if (subsystemid == EVT_DIALUP_REPORT_CONNECT_STATE
+        && action == DIAL_STATE_CONNECTING) {
+        // Do NOT notify "oled" of EVT_DIALUP_REPORT_CONNECT_STATE
+        // with action=DIAL_STATE_CONNECTING.
+        // We do not want to draw animations in the middle of network
+        // change from the menu.
         return 0;
     }
     

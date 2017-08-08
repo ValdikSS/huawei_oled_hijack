@@ -12,6 +12,7 @@ Currently this library adds 3 new menu items:
 * **IMEI Changer** (switch between stock, random Android and random Windows Phone IMEI)
 * **Remote Access Control** (block telnet, ADB and web interface from being accessed over Wi-Fi and USB)
 * **No Battery Mode** (allows device to work without battery)
+* **USB Mode** (change USB composite device mode between stock, AT/Network/SD, AT/Network and Debug modes)
 
 ![Screenshot 1](https://i.imgur.com/LioaPph.png) ![Screenshot 2](https://i.imgur.com/Z8UlVX4.png) ![Screenshot 3](https://i.imgur.com/mDXC7Yc.png) ![Screenshot 4](https://i.imgur.com/nR6fORk.png) ![Screenshot 5](https://i.imgur.com/hDS5V3O.png) ![Screenshot 6](https://i.imgur.com/ekUsutI.png)
 

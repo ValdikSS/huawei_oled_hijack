@@ -65,6 +65,7 @@ static const char *scripts[] = {
     "/app/bin/oled_hijack/imei_change.sh",
     "/app/bin/oled_hijack/remote_access.sh",
     "/app/bin/oled_hijack/no_battery.sh",
+    "/app/bin/oled_hijack/usb_mode.sh",
     NULL
 };
 
@@ -114,6 +115,18 @@ static const char *remote_access_mapping[] = {
     NULL
 };
 
+static const char *usb_mode_mapping[] = {
+    // 0
+    "Stock",
+    // 1
+    "AT, Network, SD",
+    // 2
+    "AT, Network",
+    // 3
+    "Debug mode",
+    NULL
+};
+
 static const char *enabled_disabled_mapping[] = {
     // 0
     "Disabled",
@@ -128,6 +141,7 @@ struct menu_s {
     uint8_t imei_change;
     uint8_t remote_access;
     uint8_t no_battery;
+    uint8_t usb_mode;
 } menu_state;
 
 /* *************************************** */
@@ -185,6 +199,9 @@ static void update_menu_state() {
                 break;
             case 4:
                 menu_state.no_battery = ret;
+                break;
+            case 5:
+                menu_state.usb_mode = ret;
                 break;
         }
     }
@@ -343,6 +360,7 @@ int sprintf(char *str, const char *format, ...) {
     char imei_change_buf[1024];
     char remote_access_buf[1024];
     char no_battery_buf[1024];
+    char usb_mode_buf[1024];
 
     va_list args;
     va_start(args, format);
@@ -372,17 +390,20 @@ int sprintf(char *str, const char *format, ...) {
         create_menu_item(imei_change_buf, imei_change_mapping, menu_state.imei_change);
         create_menu_item(remote_access_buf, remote_access_mapping, menu_state.remote_access);
         create_menu_item(no_battery_buf, enabled_disabled_mapping, menu_state.no_battery);
+        create_menu_item(usb_mode_buf, usb_mode_mapping, menu_state.usb_mode);
         snprintf(str, 999,
                  "# Network Mode:\n%s" \
                  "# TTL Mangling:\n%s" \
                  "# Device IMEI:\n%s" \
                  "# Remote Access:\n%s" \
-                 "# Work w/o Battery:\n%s",
+                 "# Work w/o Battery:\n%s" \
+                 "# USB Mode:\n%s",
                  network_mode_buf,
                  ttlfix_buf,
                  imei_change_buf,
                  remote_access_buf,
-                 no_battery_buf
+                 no_battery_buf,
+                 usb_mode_buf
         );
         //fprintf(stderr, "%s\n",);
     }

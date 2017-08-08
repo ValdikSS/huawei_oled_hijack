@@ -8,15 +8,20 @@ IMEI_GENERATOR="/app/bin/oled_hijack/imei_generator"
 
 CURRENT_IMEI_FILE="/var/current_imei"
 BACKUP_IMEI_FILE="/online/imei_backup"
+DATAUNLOCK_FLAG="/var/dataunlocked"
 
 dataunlock () {
-    DATALOCK_CODE="$($HUAWEICALC -3 $CURRENT_IMEI)"
-    if [[ "$DATALOCK_CODE" != "" ]]
-    then
-        echo -e "AT^DATALOCK=\"$DATALOCK_CODE\"\r" > /dev/appvcom
-        echo "Datalock:" "AT^DATALOCK=\"$DATALOCK_CODE\""
-    else
-        exit 254
+    if [[ ! -f "$DATAUNLOCK_FLAG" ]]
+        then
+        DATALOCK_CODE="$($HUAWEICALC -3 $CURRENT_IMEI)"
+        if [[ "$DATALOCK_CODE" != "" ]]
+        then
+            echo -e "AT^DATALOCK=\"$DATALOCK_CODE\"\r" > /dev/appvcom
+            echo "Datalock:" "AT^DATALOCK=\"$DATALOCK_CODE\""
+            echo > $DATAUNLOCK_FLAG
+        else
+            exit 254
+        fi
     fi
 }
 

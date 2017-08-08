@@ -8,7 +8,7 @@ CONF_FILE="/var/battery_status"
 if [[ ! -f "$CONF_FILE" ]]
 then
     $IMEI_CHANGE dataunlock
-    CURRENT_BATTERY="$($ATC 'AT^NVRD=50364' | grep -o '[0-9 ]\{11\}')"
+    CURRENT_BATTERY="$($ATC 'AT^NVRD=50364' | grep 'NVRD' | grep -o '[0-9 ]\{11\}')"
     if [[ "$CURRENT_BATTERY" == "00 00 00 00" ]]
     then
         CURRENT_BATTERY_STATUS="0"

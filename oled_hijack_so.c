@@ -20,6 +20,7 @@
 #define DIAL_STATE_CONNECTING 900
 #define BUTTON_POWER 8
 #define BUTTON_MENU 9
+#define LED_ON 0
 
 /* 
  * Variables from "oled" binary.
@@ -36,6 +37,7 @@
  */
 static uint32_t *g_current_page = (uint32_t*)(0x00029f94);
 static uint32_t *g_current_Info_page = (uint32_t*)(0x0002CAB8);
+static uint32_t *g_led_status = (uint32_t*)(0x00029FA8);
 
 static uint32_t first_info_screen = 0;
 
@@ -291,7 +293,7 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
     
     if (*g_current_page == PAGE_INFORMATION) {
         if (first_info_screen && first_info_screen != *g_current_Info_page) {
-            if (subsystemid == SUBSYSTEM_GPIO) {
+            if (subsystemid == SUBSYSTEM_GPIO && *g_led_status == LED_ON) {
                 fprintf(stderr, "We're not on a main info screen!\n");
                 if (lock_buttons) {
                     // Do NOT notify "oled" of button events

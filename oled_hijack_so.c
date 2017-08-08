@@ -279,10 +279,11 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
         return 0;
     }
 
-    else if (subsystemid == EVT_DIALUP_REPORT_CONNECT_STATE
-        && action == DIAL_STATE_CONNECTING) {
+    else if (*g_current_page == PAGE_INFORMATION &&
+        subsystemid == EVT_DIALUP_REPORT_CONNECT_STATE &&
+        action == DIAL_STATE_CONNECTING) {
         // Do NOT notify "oled" of EVT_DIALUP_REPORT_CONNECT_STATE
-        // with action=DIAL_STATE_CONNECTING.
+        // with action=DIAL_STATE_CONNECTING while on info page.
         // We do not want to draw animations in the middle of network
         // change from the menu.
         return 0;

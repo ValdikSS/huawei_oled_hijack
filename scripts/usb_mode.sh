@@ -1,6 +1,7 @@
 #!/system/bin/busybox sh
 
 ATC="/app/bin/oled_hijack/atc.sh"
+IMEI_CHANGE="/app/bin/oled_hijack/imei_change.sh"
 CONF_FILE="/var/usb_mode"
 
 MODE_0="A1,A2;12,16,A1,A2"
@@ -18,6 +19,7 @@ status_from_mode() {
 # usb mode caching to prevent menu slowdowns
 if [[ ! -f "$CONF_FILE" ]]
 then
+    $IMEI_CHANGE dataunlock
     CURRENT_USB_MODE="$($ATC 'AT^SETPORT?' | grep 'SETPORT' | grep -o ':[0-9A-F;,]*' | cut -b 2-99)"
     CURRENT_USB_MODE="$(status_from_mode "$CURRENT_USB_MODE")"
     if [[ "$CURRENT_USB_MODE" == "" ]]

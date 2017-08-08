@@ -38,6 +38,13 @@ static uint32_t *g_current_page = (uint32_t*)(0x00029f94);
 static uint32_t *g_current_Info_page = (uint32_t*)(0x0002CAB8);
 
 static uint32_t first_info_screen = 0;
+
+// Do not send BUTTON_PRESSED event notify to "oled" if set.
+// something like a mutex, but we don't really care about
+// thread-safe as we only care of atomic writes which are
+// in the same thread.
+static int lock_buttons = 0;
+
 static int current_infopage_item = 0;
 
 /*
@@ -123,6 +130,7 @@ struct menu_s {
 
 /* *************************************** */
 
+#define LOCKBUTTONS(x) (x ? (lock_buttons = 1) : (lock_buttons = 0))
 
 /* 
  * Execute shell script and return exit code.
@@ -284,11 +292,19 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
         if (first_info_screen && first_info_screen != *g_current_Info_page) {
             if (subsystemid == SUBSYSTEM_GPIO) {
                 fprintf(stderr, "We're not on a main info screen!\n");
+                if (lock_buttons) {
+                    // Do NOT notify "oled" of button events
+                    // if buttons are locked by slow script
+                    return 0;
+                }
                 if (action == BUTTON_POWER) {
                     // button pressed
                     fprintf(stderr, "BUTTON PRESSED!\n");
+                    // lock buttons to prevent user intervention
+                    LOCKBUTTONS(1);
                     handle_menu_state_change(current_infopage_item);
                     leave_and_enter_menu(current_infopage_item);
+                    LOCKBUTTONS(0);
                     return notify_handler_async_real(subsystemid, BUTTON_MENU, subaction);
                 }
                 else if (action == BUTTON_MENU) {

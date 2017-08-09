@@ -87,9 +87,11 @@ static const char *ttlfix_mapping[] = {
     // 0
     "Disabled",
     // 1
-    "Enabled, TTL=64",
+    "TTL=64",
     // 2
-    "Enabled, TTL=128",
+    "TTL=128",
+    // 3
+    "TTL=65 (WiFi Ext.)",
     NULL
 };
 

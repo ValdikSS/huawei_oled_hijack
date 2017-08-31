@@ -1,5 +1,5 @@
 /*
- * Advanced OLED menu for Huawei E5372 portable LTE router.
+ * Advanced OLED menu for Huawei E5770 portable LTE router.
  * 
  * Compile:
  * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -s -o oled_hijack.so oled_hijack_so.c
@@ -12,34 +12,35 @@
 #include <stdarg.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <sys/mman.h>
 
-#define PAGE_INFORMATION 1
+#define PAGE_INFORMATION 8
+#define PAGE_BEFORE_INFORMATION 7
 #define SUBSYSTEM_GPIO 21002
 #define EVT_OLED_WIFI_WAKEUP 14026
 #define EVT_DIALUP_REPORT_CONNECT_STATE 4037
 #define DIAL_STATE_CONNECTING 900
-#define BUTTON_POWER 8
-#define BUTTON_MENU 9
+#define BUTTON_POWER 9
+#define BUTTON_MENU 8
 #define LED_ON 0
 
 /* 
  * Variables from "oled" binary.
  * 
- * g_current_page is a current menu page. -1 for main screen, 0 for main
- * menu screen, 1 for information page.
+ * E5770:
+ *  g_current_page is a current menu page. 0 for main screen, 7 for IP
+ *  address, 8 for homepage.
  * 
- * g_current_Info_page is a pointer to current visible page in the
- * information screen.
- * 
- * Current values are based on E5372 oled binary.
- * MD5: eb4e65509e16c2023f4f9a5e00cd0785
+ *  Current values are based on E5770 oled binary.
+ *  MD5: 67a52b23d7d2d13ffeca446fcc30eccd
  * 
  */
-static uint32_t *g_current_page = (uint32_t*)(0x00029f94);
-static uint32_t *g_current_Info_page = (uint32_t*)(0x0002CAB8);
-static uint32_t *g_led_status = (uint32_t*)(0x00029FA8);
 
-static uint32_t first_info_screen = 0;
+// These values get aligned to real addresses from notify_handler_async
+static uint32_t *g_current_page = (uint32_t*)(0x00003A24); // start_data + 0x3A24. 8 is for homepage.
+static uint32_t *g_led_status = (uint32_t*)(0x00002234);  // start_data + 0x2234
+static uint32_t *g_main_domain = (uint32_t*)(0x00003804); // start_data + 0x3804, used as dword pointer, not char!!!
+static uint16_t *g_loaddomain_code = (uint16_t*)(0x0000B86A); // start_text + 0xB86A, LDRB R0, [R1]
 
 // Do not send BUTTON_PRESSED event notify to "oled" if set.
 // something like a mutex, but we don't really care about
@@ -47,7 +48,15 @@ static uint32_t first_info_screen = 0;
 // in the same thread.
 static int lock_buttons = 0;
 
-static int current_infopage_item = 0;
+// -1 means we're not inside the menu. 0 means first script.
+static int current_infopage_item = -1;
+
+static uint32_t startcode = 0; // start of TEXT segment
+static uint32_t start_data = 0; // start of DATA segment
+static uint32_t end_data = 0; // end of DATA segment and start of BSS
+static char dummy[100];
+
+static char current_menu_buf[1024];
 
 /*
  * Real handlers from oled binary and libraries
@@ -64,10 +73,11 @@ static const char *scripts[] = {
     "/app/bin/oled_hijack/ttlfix.sh",
     "/app/bin/oled_hijack/imei_change.sh",
     "/app/bin/oled_hijack/remote_access.sh",
-    "/app/bin/oled_hijack/no_battery.sh",
     "/app/bin/oled_hijack/usb_mode.sh",
     NULL
 };
+
+static int scripts_count = 0;
 
 static const char *network_mode_mapping[] = {
     // 0
@@ -142,12 +152,12 @@ struct menu_s {
     uint8_t ttlfix;
     uint8_t imei_change;
     uint8_t remote_access;
-    uint8_t no_battery;
     uint8_t usb_mode;
 } menu_state;
 
 /* *************************************** */
 
+#define UNPROTECT(addr,len) (mprotect((void*)(addr-(addr%len)),len,PROT_READ|PROT_WRITE|PROT_EXEC))
 #define LOCKBUTTONS(x) (x ? (lock_buttons = 1) : (lock_buttons = 0))
 
 /* 
@@ -200,9 +210,6 @@ static void update_menu_state() {
                 menu_state.remote_access = ret;
                 break;
             case 4:
-                menu_state.no_battery = ret;
-                break;
-            case 5:
                 menu_state.usb_mode = ret;
                 break;
         }
@@ -220,7 +227,6 @@ static void handle_menu_state_change(int menu_page) {
 
 /*
  * Create menu of 3 items.
- * Only for E5372 display.
  */
 static void create_menu_item(char *buf, const char *mapping[], int current_item) {
     int i, char_list_size = 0;
@@ -234,7 +240,7 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
 
     if (current_item == 0) {
         snprintf(buf, 1024 - 1,
-             "  > %s\n    %s\n    %s\n",
+             "   > %s\n     %s\n     %s\n",
              (mapping[current_item]),
              ((char_list_size >= 2) ? mapping[current_item + 1] : nothing),
              ((char_list_size >= 3) ? mapping[current_item + 2] : nothing)
@@ -242,7 +248,7 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
     }
     else if (current_item == char_list_size - 1 && char_list_size >= 3) {
         snprintf(buf, 1024 - 1,
-             "    %s\n    %s\n  > %s\n",
+             "     %s\n     %s\n   > %s\n",
              ((current_item >= 2 && char_list_size > 2) ? mapping[current_item - 2] : nothing),
              ((current_item >= 1 && char_list_size > 1) ? mapping[current_item - 1] : nothing),
              (mapping[current_item])
@@ -250,7 +256,7 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
     }
     else if (current_item <= char_list_size) {
         snprintf(buf, 1024 - 1,
-            "    %s\n  > %s\n    %s\n",
+            "     %s\n   > %s\n     %s\n",
             ((current_item > 0) ? mapping[current_item - 1] : nothing),
             (mapping[current_item]),
             ((current_item < char_list_size && mapping[current_item + 1]) \
@@ -259,7 +265,7 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
     }
     else {
         snprintf(buf, 1024 - 1,
-            "    ERROR\n\n\n");
+            "     ERROR\n\n\n");
     }
 }
 
@@ -271,47 +277,101 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
  * Assuming information page is a first menu item.
  * 
  */
-static void leave_and_enter_menu(int advance) {
-    int i;
+static void continue_menu() {
+    *g_current_page = PAGE_BEFORE_INFORMATION;
+}
 
-    *g_current_Info_page = 0;
-    // selecting "back"
-    notify_handler_async_real(SUBSYSTEM_GPIO, BUTTON_MENU, 0);
-    // pressing "back"
-    notify_handler_async_real(SUBSYSTEM_GPIO, BUTTON_POWER, 0);
-    // selecting "device information"
-    notify_handler_async_real(SUBSYSTEM_GPIO, BUTTON_MENU, 0);
-    // pressing "device information"
-    notify_handler_async_real(SUBSYSTEM_GPIO, BUTTON_POWER, 0);
+static void enter_menu() {
+    current_infopage_item = 0;
+};
 
-    // advancing to the exact page we were on
-    for (i = 0; i <= advance; i++) {
-        notify_handler_async_real(SUBSYSTEM_GPIO, BUTTON_MENU, 0);
+static void exit_menu() {
+    current_infopage_item = -1;
+    *g_current_page = PAGE_INFORMATION;
+}
+
+static void create_and_write_menu(int menu_item) {
+    char tempbuf[1024];
+
+    switch (menu_item) {
+        case 0:
+            create_menu_item(current_menu_buf, network_mode_mapping, menu_state.radio_mode);
+            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Network Mode:", current_menu_buf);
+            break;
+        case 1:
+            create_menu_item(current_menu_buf, ttlfix_mapping, menu_state.ttlfix);
+            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# TTL Mangling:", current_menu_buf);
+            break;
+        case 2:
+            create_menu_item(current_menu_buf, imei_change_mapping, menu_state.imei_change);
+            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Device IMEI:", current_menu_buf);
+            break;
+        case 3:
+            create_menu_item(current_menu_buf, remote_access_mapping, menu_state.remote_access);
+            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Remote Access:", current_menu_buf);
+            break;
+        case 4:
+            create_menu_item(current_menu_buf, usb_mode_mapping, menu_state.usb_mode);
+            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# USB Mode:", current_menu_buf);
+            break;
     }
+    fprintf(stderr, "CREATING MENU!!!!!\n");
+    strncpy(current_menu_buf, tempbuf, 1024 - 1);
 }
 
 static int notify_handler_async(int subsystemid, int action, int subaction) {
+    int i;
+    static FILE *fp;
+
+    if (!start_data) {
+        fp = fopen("/proc/self/stat", "r");
+        if (fp) {
+            fscanf(fp, "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld"
+            /*           1  2  3  4  5  6  7  8  9  10  11  12  13  14  15  16  17  18  19  20 */
+                       "%ld %llu %lu %ld %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu"
+            /*           21   22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37   */
+                       "%d %d %u %u %llu %lu %ld %lu %lu",
+            /*          38 39 40 41   42  43  44  45  46                                       */
+                   &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy,     // 10
+                   &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy,     // 20
+                   &dummy, &dummy, &dummy, &dummy, &dummy, &startcode, &dummy, &dummy, &dummy, &dummy, // 30
+                   &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy,     // 40
+                   &dummy, &dummy, &dummy, &dummy, &start_data, &end_data);
+
+            // start_data is not really a start of DATA segment, but an end of previous segment.
+            // There are other segments before data. We need to skip them.
+            start_data += 4096 + 512 + 12;
+
+            // Add start_data to offsets
+            g_current_page = (uint32_t*)(end_data + (uint32_t)g_current_page);
+            g_led_status = (uint32_t*)(start_data + (uint32_t)g_led_status);
+            g_main_domain = (uint32_t*)(end_data + (uint32_t)g_main_domain);
+            g_loaddomain_code = (uint16_t*)(startcode + (uint32_t)g_loaddomain_code);
+            // unprotecting code to patch it
+            UNPROTECT((uint32_t)g_loaddomain_code, 4096);
+
+            // patch domain char buffer to act like a storage for a pointer, not
+            // for the actual domain. That buffer is 64 bytes long which is not
+            // sufficient for all menu texts.
+            *g_loaddomain_code = 0x6809; // ldr r1, [r1]
+            // store pointer to current_menu_buf there.
+            *(g_main_domain) = (uint32_t)&current_menu_buf;
+
+            fclose(fp);
+        }
+    }
+
+    if (!scripts_count) {
+        for (i = 0; scripts[i] != NULL; i++) {
+            scripts_count++;
+        }
+    }
+
     fprintf(stderr, "notify_handler_async: %d, %d, %x\n", subsystemid, action, subaction);
+    //fprintf(stderr, "!!!!!!! current page = %d !!!!!!!, led status = %d, main_domain = _%s_\n", *g_current_page, *g_led_status, g_main_domain);
 
-    if (subsystemid == EVT_OLED_WIFI_WAKEUP) {
-        // Do NOT notify "oled" of EVT_OLED_WIFI_WAKEUP event.
-        // Fixes "exiting sleep mode" on every button
-        // if Wi-Fi is completely disabled in web interface.
-        return 0;
-    }
-
-    else if (*g_current_page == PAGE_INFORMATION &&
-        subsystemid == EVT_DIALUP_REPORT_CONNECT_STATE &&
-        action == DIAL_STATE_CONNECTING) {
-        // Do NOT notify "oled" of EVT_DIALUP_REPORT_CONNECT_STATE
-        // with action=DIAL_STATE_CONNECTING while on info page.
-        // We do not want to draw animations in the middle of network
-        // change from the menu.
-        return 0;
-    }
-    
-    if (*g_current_page == PAGE_INFORMATION) {
-        if (first_info_screen && first_info_screen != *g_current_Info_page) {
+    if (*g_current_page == PAGE_INFORMATION || *g_current_page == PAGE_BEFORE_INFORMATION) {
+        fprintf(stderr, "PAGE_INFORMATION\n");
             if (subsystemid == SUBSYSTEM_GPIO && *g_led_status == LED_ON) {
                 fprintf(stderr, "We're not on a main info screen!\n");
                 if (lock_buttons) {
@@ -325,20 +385,38 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
                     // lock buttons to prevent user intervention
                     LOCKBUTTONS(1);
                     handle_menu_state_change(current_infopage_item);
-                    leave_and_enter_menu(current_infopage_item);
+                    update_menu_state();
+                    create_and_write_menu(current_infopage_item);
                     LOCKBUTTONS(0);
+                    continue_menu();
                     return notify_handler_async_real(subsystemid, BUTTON_MENU, subaction);
                 }
                 else if (action == BUTTON_MENU) {
+                    if (*g_current_page == PAGE_BEFORE_INFORMATION && current_infopage_item == -1) {
+                        // enter advanced menu if we're on an IP address page and pressed BUTTON_MENU
+                        enter_menu();
+                        LOCKBUTTONS(1);
+                        update_menu_state();
+                        create_and_write_menu(current_infopage_item);
+                        LOCKBUTTONS(0);
+                        return notify_handler_async_real(subsystemid, action, subaction);
+                    }
                     current_infopage_item++;
+                    fprintf(stderr, "CURRENT INFOPAGE ITEM = %d, SCRIPTS COUNT = %d\n", current_infopage_item, scripts_count);
+                    if (current_infopage_item < scripts_count) {
+                        fprintf(stderr, "GOING BACK AND RE-ENTERING MENU!\n");
+                        continue_menu();
+                        create_and_write_menu(current_infopage_item);
+                    }
+                    else {
+                        exit_menu();
+                    }
                 }
             }
-        }
-        else {
-            current_infopage_item = 0;
-        }
     }
-
+    else {
+        current_infopage_item = -1;
+    }
     return notify_handler_async_real(subsystemid, action, subaction);
 }
 
@@ -355,81 +433,14 @@ int register_notify_handler(int subsystemid, void *notify_handler_sync, void *no
     return register_notify_handler_real(subsystemid, notify_handler_sync, notify_handler_async);
 }
 
-int sprintf(char *str, const char *format, ...) {
-    int i = 0;
-    char network_mode_buf[1024];
-    char ttlfix_buf[1024];
-    char imei_change_buf[1024];
-    char remote_access_buf[1024];
-    char no_battery_buf[1024];
-    char usb_mode_buf[1024];
 
-    va_list args;
-    va_start(args, format);
-    i = vsprintf(str, format, args);
-    va_end(args);
-    
-    if (format && (strcmp(format, "SSID: %s\n") == 0 ||
-        strncmp(str, "SSID0: ", 7) == 0 ||
-        strcmp(format, "PWD: %s\n") == 0 ||
-        strncmp(str, "PWD0: ", 6) == 0)) {
-            va_start(args, format);
-            i = vsnprintf(str, 20, format, args);
-            str[19] = '\0';
-            va_end(args);
-    }
-    else if (format && (strncmp(str, "SSID1: ", 7) == 0 ||
-        strncmp(str, "PWD1: ", 6) == 0)) {
-            i = snprintf(str, 2, "");
-    }
-
-    // Hijacking "Homepage: %s" string on second information page
-    if (format && strcmp(format, "Homepage: %s") == 0) {
-        fprintf(stderr, "FOUND STRING!\n");
-        update_menu_state();
-        create_menu_item(network_mode_buf, network_mode_mapping, menu_state.radio_mode);
-        create_menu_item(ttlfix_buf, ttlfix_mapping, menu_state.ttlfix);
-        create_menu_item(imei_change_buf, imei_change_mapping, menu_state.imei_change);
-        create_menu_item(remote_access_buf, remote_access_mapping, menu_state.remote_access);
-        create_menu_item(no_battery_buf, enabled_disabled_mapping, menu_state.no_battery);
-        create_menu_item(usb_mode_buf, usb_mode_mapping, menu_state.usb_mode);
-        snprintf(str, 999,
-                 "# Network Mode:\n%s" \
-                 "# TTL Mangling:\n%s" \
-                 "# Device IMEI:\n%s" \
-                 "# Remote Access:\n%s" \
-                 "# Work w/o Battery:\n%s" \
-                 "# USB Mode:\n%s",
-                 network_mode_buf,
-                 ttlfix_buf,
-                 imei_change_buf,
-                 remote_access_buf,
-                 no_battery_buf,
-                 usb_mode_buf
-        );
-        //fprintf(stderr, "%s\n",);
-    }
-    fprintf(stderr, "sprintf %s\n", format);
-    return i;
-}
-
-int osa_print_log_ex(char *subsystem, char *sourcefile, int line,
+/*int osa_print_log_ex(char *subsystem, char *sourcefile, int line,
                      int offset, const char *message, ...) {
-    /*va_list args;
+    va_list args;
     va_start(args, message);
     fprintf(stderr, "[%s] %s (%d): ", subsystem, sourcefile, line);
     vprintf(message, args);
-    va_end(args);*/
-
-    if (*g_current_page == PAGE_INFORMATION) {
-        if (!first_info_screen) {
-            first_info_screen = *g_current_Info_page;
-            fprintf(stderr, "Saved first screen address!\n");
-        }
-    }
-    else {
-        first_info_screen = 0;
-    }
+    va_end(args);
 
     return 0;
-}
+}*/

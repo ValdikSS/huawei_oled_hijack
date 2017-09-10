@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #define PAGE_INFORMATION 1
 #define SUBSYSTEM_GPIO 21002
@@ -21,6 +22,8 @@
 #define BUTTON_POWER 8
 #define BUTTON_MENU 9
 #define LED_ON 0
+
+#define OLED_CUSTOM "/online/oled_custom.sh"
 
 /* 
  * Variables from "oled" binary.
@@ -48,6 +51,7 @@ static uint32_t first_info_screen = 0;
 static int lock_buttons = 0;
 
 static int current_infopage_item = 0;
+static int custom_script_enabled = -1;
 
 /*
  * Real handlers from oled binary and libraries
@@ -67,6 +71,7 @@ static const char *scripts[] = {
     "/app/bin/oled_hijack/remote_access.sh",
     "/app/bin/oled_hijack/no_battery.sh",
     "/app/bin/oled_hijack/usb_mode.sh",
+    OLED_CUSTOM,
     NULL
 };
 
@@ -148,6 +153,7 @@ struct menu_s {
     uint8_t remote_access;
     uint8_t no_battery;
     uint8_t usb_mode;
+    uint8_t custom;
 } menu_state;
 
 /* *************************************** */
@@ -211,6 +217,9 @@ static void update_menu_state() {
                 break;
             case 6:
                 menu_state.usb_mode = ret;
+                break;
+            case 7:
+                menu_state.custom = ret;
                 break;
         }
     }
@@ -363,7 +372,7 @@ int register_notify_handler(int subsystemid, void *notify_handler_sync, void *no
 }
 
 int sprintf(char *str, const char *format, ...) {
-    int i = 0;
+    int i = 0, j = 0;
     char network_mode_buf[1024];
     char ttlfix_buf[1024];
     char anticensorship_buf[1024];
@@ -371,6 +380,8 @@ int sprintf(char *str, const char *format, ...) {
     char remote_access_buf[1024];
     char no_battery_buf[1024];
     char usb_mode_buf[1024];
+    static char custom_buf[1024];
+    static char custom_text_buf[] = "# Custom script:\n";
 
     va_list args;
     va_start(args, format);
@@ -402,6 +413,25 @@ int sprintf(char *str, const char *format, ...) {
         create_menu_item(remote_access_buf, remote_access_mapping, menu_state.remote_access);
         create_menu_item(no_battery_buf, enabled_disabled_mapping, menu_state.no_battery);
         create_menu_item(usb_mode_buf, usb_mode_mapping, menu_state.usb_mode);
+
+        if (custom_script_enabled == -1) {
+            if (access(OLED_CUSTOM, F_OK) == 0) {
+                custom_script_enabled = 1;
+            }
+            else {
+                // Disable custom script support
+                custom_script_enabled = 0;
+                custom_buf[0] = '\0';
+                custom_text_buf[0] = '\0';
+                for (j = 0; scripts[j] != NULL; j++) {}
+                scripts[j-1] = NULL;
+            }
+        }
+
+        if (custom_script_enabled) {
+            create_menu_item(custom_buf, enabled_disabled_mapping, menu_state.custom);
+        }
+
         snprintf(str, 999,
                  "# Network Mode:\n%s" \
                  "# TTL Mangling:\n%s" \
@@ -409,14 +439,16 @@ int sprintf(char *str, const char *format, ...) {
                  "# Device IMEI:\n%s" \
                  "# Remote Access:\n%s" \
                  "# Work w/o Battery:\n%s" \
-                 "# USB Mode:\n%s",
+                 "# USB Mode:\n%s%s%s",
                  network_mode_buf,
                  ttlfix_buf,
                  anticensorship_buf,
                  imei_change_buf,
                  remote_access_buf,
                  no_battery_buf,
-                 usb_mode_buf
+                 usb_mode_buf,
+                 custom_text_buf,
+                 custom_buf
         );
         //fprintf(stderr, "%s\n",);
     }

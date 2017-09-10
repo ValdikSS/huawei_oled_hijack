@@ -62,6 +62,7 @@ static int (*notify_handler_async_real)(int subsystemid, int action, int subacti
 static const char *scripts[] = {
     "/app/bin/oled_hijack/radio_mode.sh",
     "/app/bin/oled_hijack/ttlfix.sh",
+    "/app/bin/oled_hijack/anticensorship.sh",
     "/app/bin/oled_hijack/imei_change.sh",
     "/app/bin/oled_hijack/remote_access.sh",
     "/app/bin/oled_hijack/no_battery.sh",
@@ -107,12 +108,14 @@ static const char *imei_change_mapping[] = {
 
 static const char *remote_access_mapping[] = {
     // 0
-    "Web, Telnet, ADB",
+    "Web & Telnet",
     // 1
     "Web only",
     // 2
-    "Telnet & ADB only",
+    "Web, Telnet, ADB",
     // 3
+    "Telnet & ADB only",
+    // 4
     "All disabled",
     NULL
 };
@@ -140,6 +143,7 @@ static const char *enabled_disabled_mapping[] = {
 struct menu_s {
     uint8_t radio_mode;
     uint8_t ttlfix;
+    uint8_t anticensorship;
     uint8_t imei_change;
     uint8_t remote_access;
     uint8_t no_battery;
@@ -194,15 +198,18 @@ static void update_menu_state() {
                 menu_state.ttlfix = ret;
                 break;
             case 2:
-                menu_state.imei_change = ret;
+                menu_state.anticensorship = ret;
                 break;
             case 3:
-                menu_state.remote_access = ret;
+                menu_state.imei_change = ret;
                 break;
             case 4:
-                menu_state.no_battery = ret;
+                menu_state.remote_access = ret;
                 break;
             case 5:
+                menu_state.no_battery = ret;
+                break;
+            case 6:
                 menu_state.usb_mode = ret;
                 break;
         }
@@ -359,6 +366,7 @@ int sprintf(char *str, const char *format, ...) {
     int i = 0;
     char network_mode_buf[1024];
     char ttlfix_buf[1024];
+    char anticensorship_buf[1024];
     char imei_change_buf[1024];
     char remote_access_buf[1024];
     char no_battery_buf[1024];
@@ -389,6 +397,7 @@ int sprintf(char *str, const char *format, ...) {
         update_menu_state();
         create_menu_item(network_mode_buf, network_mode_mapping, menu_state.radio_mode);
         create_menu_item(ttlfix_buf, ttlfix_mapping, menu_state.ttlfix);
+        create_menu_item(anticensorship_buf, enabled_disabled_mapping, menu_state.anticensorship);
         create_menu_item(imei_change_buf, imei_change_mapping, menu_state.imei_change);
         create_menu_item(remote_access_buf, remote_access_mapping, menu_state.remote_access);
         create_menu_item(no_battery_buf, enabled_disabled_mapping, menu_state.no_battery);
@@ -396,12 +405,14 @@ int sprintf(char *str, const char *format, ...) {
         snprintf(str, 999,
                  "# Network Mode:\n%s" \
                  "# TTL Mangling:\n%s" \
+                 "# Anticensorship:\n%s" \
                  "# Device IMEI:\n%s" \
                  "# Remote Access:\n%s" \
                  "# Work w/o Battery:\n%s" \
                  "# USB Mode:\n%s",
                  network_mode_buf,
                  ttlfix_buf,
+                 anticensorship_buf,
                  imei_change_buf,
                  remote_access_buf,
                  no_battery_buf,

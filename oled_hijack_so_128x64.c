@@ -15,7 +15,7 @@
 #include <sys/mman.h>
 
 #define PAGE_INFORMATION 8
-#define PAGE_BEFORE_INFORMATION 7
+#define PAGE_BEFORE_INFORMATION 5
 #define SUBSYSTEM_GPIO 21002
 #define EVT_OLED_WIFI_WAKEUP 14026
 #define EVT_DIALUP_REPORT_CONNECT_STATE 4037
@@ -95,6 +95,7 @@ static int (*notify_handler_async_real)(int subsystemid, int action, int subacti
 static const char *scripts[] = {
     "/app/bin/oled_hijack/radio_mode.sh",
     "/app/bin/oled_hijack/ttlfix.sh",
+    "/app/bin/oled_hijack/anticensorship.sh",
     "/app/bin/oled_hijack/imei_change.sh",
     "/app/bin/oled_hijack/remote_access.sh",
     "/app/bin/oled_hijack/usb_mode.sh",
@@ -141,12 +142,14 @@ static const char *imei_change_mapping[] = {
 
 static const char *remote_access_mapping[] = {
     // 0
-    "Web, Telnet, ADB",
+    "Web & Telnet",
     // 1
     "Web only",
     // 2
-    "Telnet & ADB only",
+    "Web, Telnet, ADB",
     // 3
+    "Telnet & ADB only",
+    // 4
     "All disabled",
     NULL
 };
@@ -174,6 +177,7 @@ static const char *enabled_disabled_mapping[] = {
 struct menu_s {
     uint8_t radio_mode;
     uint8_t ttlfix;
+    uint8_t anticensorship;
     uint8_t imei_change;
     uint8_t remote_access;
     uint8_t usb_mode;
@@ -228,12 +232,15 @@ static void update_menu_state() {
                 menu_state.ttlfix = ret;
                 break;
             case 2:
-                menu_state.imei_change = ret;
+                menu_state.anticensorship = ret;
                 break;
             case 3:
-                menu_state.remote_access = ret;
+                menu_state.imei_change = ret;
                 break;
             case 4:
+                menu_state.remote_access = ret;
+                break;
+            case 5:
                 menu_state.usb_mode = ret;
                 break;
         }
@@ -327,14 +334,18 @@ static void create_and_write_menu(int menu_item) {
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# TTL Mangling:", current_menu_buf);
             break;
         case 2:
+            create_menu_item(current_menu_buf, ttlfix_mapping, menu_state.ttlfix);
+            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Anticensorship:", current_menu_buf);
+            break;
+        case 3:
             create_menu_item(current_menu_buf, imei_change_mapping, menu_state.imei_change);
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Device IMEI:", current_menu_buf);
             break;
-        case 3:
+        case 4:
             create_menu_item(current_menu_buf, remote_access_mapping, menu_state.remote_access);
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Remote Access:", current_menu_buf);
             break;
-        case 4:
+        case 5:
             create_menu_item(current_menu_buf, usb_mode_mapping, menu_state.usb_mode);
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# USB Mode:", current_menu_buf);
             break;

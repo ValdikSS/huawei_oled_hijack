@@ -381,7 +381,7 @@ int sprintf(char *str, const char *format, ...) {
     char no_battery_buf[1024];
     char usb_mode_buf[1024];
     static char custom_buf[1024];
-    static char custom_text_buf[] = "# Custom script:\n";
+    static char custom_text_buf[] = "# Custom Script:\n";
 
     va_list args;
     va_start(args, format);

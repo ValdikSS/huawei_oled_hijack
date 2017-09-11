@@ -6,7 +6,7 @@ echo $CURRENT_MODE
 
 if [[ "$1" == "get" ]]
 then
-    [[ "$CURRENT_MODE" == "0" ]]   && exit 0
+    [[ "$CURRENT_MODE" == "0" ]] || [[ "$CURRENT_MODE" == "" ]] && exit 0
     [[ "$CURRENT_MODE" == "1" ]]   && exit 1
     [[ "$CURRENT_MODE" == "64" ]]  && exit 1
     [[ "$CURRENT_MODE" == "128" ]] && exit 2
@@ -18,10 +18,8 @@ fi
 
 if [[ "$1" == "set_next" ]]
 then
-    mount -o remount,rw /system /system
-    [[ "$CURRENT_MODE" == "0" ]] && echo "1" > $CONF_FILE
+    [[ "$CURRENT_MODE" == "0" ]] || [[ "$CURRENT_MODE" == "" ]] && echo "1" > $CONF_FILE
     [[ "$CURRENT_MODE" == "1" ]] || [[ "$CURRENT_MODE" == "64" ]] && echo "128" > $CONF_FILE
     [[ "$CURRENT_MODE" == "128" ]] && echo "65" > $CONF_FILE
     [[ "$CURRENT_MODE" == "65" ]] && echo "0" > $CONF_FILE
-    mount -o remount,ro /system /system
 fi

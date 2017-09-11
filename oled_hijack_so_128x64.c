@@ -13,6 +13,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/mman.h>
+#include <unistd.h>
 
 #define PAGE_INFORMATION 8
 #define PAGE_BEFORE_INFORMATION 5
@@ -24,11 +25,14 @@
 #define BUTTON_MENU 8
 #define LED_ON 0
 
+#define OLED_CUSTOM "/online/oled_custom.sh"
+
 /* 
  * Variables from "oled" binary.
  *
  * E5770:
- *  g_current_page is a current menu page. 0 for main screen, 7 for IP
+ *  g_current_page is a current menu page. 
+ *  0 for main screen, 5 for Wi-Fi info, 7 for IP
  *  address, 8 for homepage.
  *
  *  Current values are based on E5770 oled binary.
@@ -36,7 +40,8 @@
  *
  *
  * E5885:
- *  g_current_page is a current menu page. 0 for main screen, 7 for IP
+ *  g_current_page is a current menu page.
+ *  0 for main screen, 5 for Wi-Fi info, 7 for IP
  *  address, 8 for homepage.
  *
  *  Current values are based on E5885 oled binary.
@@ -48,8 +53,8 @@
 #error "You need to define either E5770 or E5885"
 #endif
 
-#ifdef E5885
 // These values get aligned to real addresses from notify_handler_async
+#ifdef E5885
 static uint32_t *g_current_page = (uint32_t*)(0x00004438); // end_data + 0x4438. 8 is for homepage.
 static uint32_t *g_led_status = (uint32_t*)(0x00002C90);  // start_data + 0x2C90
 static uint32_t *g_main_domain = (uint32_t*)(0x0000416C); // end_data + 0x416C, used as dword pointer, not char!!!
@@ -99,6 +104,7 @@ static const char *scripts[] = {
     "/app/bin/oled_hijack/imei_change.sh",
     "/app/bin/oled_hijack/remote_access.sh",
     "/app/bin/oled_hijack/usb_mode.sh",
+    OLED_CUSTOM,
     NULL
 };
 
@@ -181,6 +187,7 @@ struct menu_s {
     uint8_t imei_change;
     uint8_t remote_access;
     uint8_t usb_mode;
+    uint8_t custom;
 } menu_state;
 
 /* *************************************** */
@@ -242,6 +249,9 @@ static void update_menu_state() {
                 break;
             case 5:
                 menu_state.usb_mode = ret;
+                break;
+            case 6:
+                menu_state.custom = ret;
                 break;
         }
     }
@@ -349,6 +359,10 @@ static void create_and_write_menu(int menu_item) {
             create_menu_item(current_menu_buf, usb_mode_mapping, menu_state.usb_mode);
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# USB Mode:", current_menu_buf);
             break;
+        case 6:
+            create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.custom);
+            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Custom Script:", current_menu_buf);
+            break;
     }
     fprintf(stderr, "CREATING MENU!!!!!\n");
     strncpy(current_menu_buf, tempbuf, 1024 - 1);
@@ -404,6 +418,10 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
     if (!scripts_count) {
         for (i = 0; scripts[i] != NULL; i++) {
             scripts_count++;
+        }
+        if (access(OLED_CUSTOM, F_OK) == 0) {
+            scripts[i-1] = NULL;
+            scripts_count--;
         }
     }
     fprintf(stderr, "notify_handler_async: %d, %d, %x\n", subsystemid, action, subaction);

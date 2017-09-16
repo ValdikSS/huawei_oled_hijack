@@ -78,6 +78,9 @@ static int lock_buttons = 0;
 // -1 means we're not inside the menu. 0 means first script.
 static int current_infopage_item = -1;
 
+// Assuming we have only one 2GHz Wi-Fi network by default.
+static int page_before_information = PAGE_BEFORE_INFORMATION;
+
 static uint32_t startcode = 0; // start of TEXT segment
 static uint32_t start_data = 0; // start of DATA segment
 static uint32_t end_data = 0; // end of DATA segment and start of BSS
@@ -317,7 +320,7 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
  * 
  */
 static void continue_menu() {
-    *g_current_page = PAGE_BEFORE_INFORMATION;
+    *g_current_page = page_before_information;
 }
 
 static void enter_menu() {
@@ -421,53 +424,60 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
     }
     fprintf(stderr, "notify_handler_async: %d, %d, %x\n", subsystemid, action, subaction);
     //fprintf(stderr, "!!!!!!! current page = %d !!!!!!!, led status = %d, main_domain = _%s_\n", *g_current_page, *g_led_status, g_main_domain);
-    if (*g_current_page == PAGE_INFORMATION || *g_current_page == PAGE_BEFORE_INFORMATION) {
 
+    if (*g_current_page == PAGE_BEFORE_INFORMATION + 1) {
+        // We have two Wi-Fi networks.
+        page_before_information = PAGE_BEFORE_INFORMATION + 1;
+        current_infopage_item = -1;
+    }
+
+    if (*g_current_page == PAGE_INFORMATION || *g_current_page == page_before_information) {
         fprintf(stderr, "PAGE_INFORMATION\n");
-            if (subsystemid == SUBSYSTEM_GPIO && *g_led_status == LED_ON) {
-                fprintf(stderr, "We're not on a main info screen!\n");
-                if (lock_buttons) {
-                    // Do NOT notify "oled" of button events
-                    // if buttons are locked by slow script
-                    return 0;
-                }
-                if (action == BUTTON_POWER) {
-                    // button pressed
-                    fprintf(stderr, "BUTTON PRESSED!\n");
-                    // lock buttons to prevent user intervention
+        if (subsystemid == SUBSYSTEM_GPIO && *g_led_status == LED_ON) {
+            fprintf(stderr, "We're not on a main info screen!\n");
+            if (lock_buttons) {
+                // Do NOT notify "oled" of button events
+                // if buttons are locked by slow script
+                return 0;
+            }
+            if (action == BUTTON_POWER && current_infopage_item != -1) {
+                // button pressed
+                fprintf(stderr, "BUTTON PRESSED!\n");
+                // lock buttons to prevent user intervention
+                LOCKBUTTONS(1);
+                handle_menu_state_change(current_infopage_item);
+                update_menu_state();
+                create_and_write_menu(current_infopage_item);
+                LOCKBUTTONS(0);
+                continue_menu();
+                return notify_handler_async_real(subsystemid, BUTTON_MENU, subaction);
+            }
+            else if (action == BUTTON_MENU) {
+                if (*g_current_page == page_before_information) {
+                    // enter advanced menu if we're on an IP address page and pressed BUTTON_MENU
+                    enter_menu();
                     LOCKBUTTONS(1);
-                    handle_menu_state_change(current_infopage_item);
                     update_menu_state();
                     create_and_write_menu(current_infopage_item);
                     LOCKBUTTONS(0);
-                    continue_menu();
-                    return notify_handler_async_real(subsystemid, BUTTON_MENU, subaction);
+                    return notify_handler_async_real(subsystemid, action, subaction);
                 }
-                else if (action == BUTTON_MENU) {
-                    if (*g_current_page == PAGE_BEFORE_INFORMATION && current_infopage_item == -1) {
-                        // enter advanced menu if we're on an IP address page and pressed BUTTON_MENU
-                        enter_menu();
-                        LOCKBUTTONS(1);
-                        update_menu_state();
-                        create_and_write_menu(current_infopage_item);
-                        LOCKBUTTONS(0);
-                        return notify_handler_async_real(subsystemid, action, subaction);
-                    }
-                    current_infopage_item++;
-                    fprintf(stderr, "CURRENT INFOPAGE ITEM = %d, SCRIPTS COUNT = %d\n", current_infopage_item, scripts_count);
-                    if (current_infopage_item < scripts_count) {
-                        fprintf(stderr, "GOING BACK AND RE-ENTERING MENU!\n");
-                        continue_menu();
-                        create_and_write_menu(current_infopage_item);
-                    }
-                    else {
-                        exit_menu();
-                    }
+                current_infopage_item++;
+                fprintf(stderr, "CURRENT INFOPAGE ITEM = %d, SCRIPTS COUNT = %d\n", current_infopage_item, scripts_count);
+                if (current_infopage_item < scripts_count) {
+                    fprintf(stderr, "GOING BACK AND RE-ENTERING MENU!\n");
+                    continue_menu();
+                    create_and_write_menu(current_infopage_item);
+                }
+                else {
+                    exit_menu();
                 }
             }
+        }
     }
     else {
         current_infopage_item = -1;
+        page_before_information = PAGE_BEFORE_INFORMATION;
     }
     return notify_handler_async_real(subsystemid, action, subaction);
 }

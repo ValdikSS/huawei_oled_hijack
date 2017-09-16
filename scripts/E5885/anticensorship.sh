@@ -1,4 +1,4 @@
-#!/system/bin/busybox sh
+#!/system/busybox sh
 
 CONF_FILE="/data/userdata/anticensorship"
 CURRENT_MODE="$(cat $CONF_FILE)"
@@ -16,6 +16,6 @@ fi
 
 if [[ "$1" == "set_next" ]]
 then
-    [[ "$CURRENT_MODE" == "" ]] || [[ "$CURRENT_MODE" == "0" ]] && echo "1" > $CONF_FILE && anticensorship 1
-    [[ "$CURRENT_MODE" == "1" ]] && echo "0" > $CONF_FILE && anticensorship 0
+    [[ "$CURRENT_MODE" == "" ]] || [[ "$CURRENT_MODE" == "0" ]] && echo "1" > $CONF_FILE && /etc/anticensorship.sh 1
+    [[ "$CURRENT_MODE" == "1" ]] && echo "0" > $CONF_FILE && /etc/anticensorship.sh 0
 fi

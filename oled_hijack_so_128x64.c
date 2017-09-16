@@ -35,8 +35,8 @@
  *  0 for main screen, 5 for Wi-Fi info, 7 for IP
  *  address, 8 for homepage.
  *
- *  Current values are based on E5770 oled binary.
- *  MD5: 67a52b23d7d2d13ffeca446fcc30eccd
+ *  Current values are based on E5770 21.327.01.00.1133 oled binary.
+ *  MD5: 208e9eb86cef6bcfd783c56af0ef5224
  *
  *
  * E5885:
@@ -44,7 +44,7 @@
  *  0 for main screen, 5 for Wi-Fi info, 7 for IP
  *  address, 8 for homepage.
  *
- *  Current values are based on E5885 oled binary.
+ *  Current values are based on E5885 21.236.05.01.233 oled binary.
  *  MD5: 96add6d12bc765cbbfed43a88e93e39a
  *
  */
@@ -59,15 +59,13 @@ static uint32_t *g_current_page = (uint32_t*)(0x00004438); // end_data + 0x4438.
 static uint32_t *g_led_status = (uint32_t*)(0x00002C90);  // start_data + 0x2C90
 static uint32_t *g_main_domain = (uint32_t*)(0x0000416C); // end_data + 0x416C, used as dword pointer, not char!!!
 static uint16_t *g_loaddomain_code = (uint16_t*)(0x0000DB78); // start_text + 0xDB78, LDRB R0, [R1]
-static uint32_t *g_is_homepage_enabled = (uint32_t*)(0x00004168); // end_data + 0x4168
 #endif
 
 #ifdef E5770
-static uint32_t *g_current_page = (uint32_t*)(0x00003A24); // start_data + 0x3A24. 8 is for homepage.
-static uint32_t *g_led_status = (uint32_t*)(0x00002234);  // start_data + 0x2234
-static uint32_t *g_main_domain = (uint32_t*)(0x00003804); // start_data + 0x3804, used as dword pointer, not char!!!
-static uint16_t *g_loaddomain_code = (uint16_t*)(0x0000B86A); // start_text + 0xB86A, LDRB R0, [R1]
-static uint32_t *g_is_homepage_enabled = (uint32_t*)(0x00003874); // end_data + 0x3874
+static uint32_t *g_current_page = (uint32_t*)(0x00003A78); // end_data + 0x3A78. 8 is for homepage.
+static uint32_t *g_led_status = (uint32_t*)(0x00002298);  // start_data + 0x2298
+static uint32_t *g_main_domain = (uint32_t*)(0x00003858); // end_data + 0x3858, used as dword pointer, not char!!!
+static uint16_t *g_loaddomain_code = (uint16_t*)(0x000074C0); // start_text + 0xB86A, LDRB R0, [R1]
 #endif
 
 

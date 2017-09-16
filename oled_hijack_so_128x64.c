@@ -344,7 +344,7 @@ static void create_and_write_menu(int menu_item) {
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# TTL Mangling:", current_menu_buf);
             break;
         case 2:
-            create_menu_item(current_menu_buf, ttlfix_mapping, menu_state.ttlfix);
+            create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.anticensorship);
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Anticensorship:", current_menu_buf);
             break;
         case 3:

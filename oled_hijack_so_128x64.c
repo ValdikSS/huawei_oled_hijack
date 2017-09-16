@@ -416,7 +416,7 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
         for (i = 0; scripts[i] != NULL; i++) {
             scripts_count++;
         }
-        if (access(OLED_CUSTOM, F_OK) == 0) {
+        if (access(OLED_CUSTOM, F_OK) != 0) {
             scripts[i-1] = NULL;
             scripts_count--;
         }

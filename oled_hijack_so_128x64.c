@@ -396,7 +396,6 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
             g_led_status = (uint32_t*)(start_data + (uint32_t)g_led_status);
             g_main_domain = (uint32_t*)(end_data + (uint32_t)g_main_domain);
             g_loaddomain_code = (uint16_t*)(startcode + (uint32_t)g_loaddomain_code);
-            g_is_homepage_enabled = (uint32_t*)(end_data + (uint32_t)g_is_homepage_enabled);
 
             // unprotecting code to patch it
             UNPROTECT((uint32_t)g_loaddomain_code, 4096);
@@ -410,8 +409,6 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
             fclose(fp);
         }
     }
-    // force-enable homepage menu
-    *g_is_homepage_enabled = 1;
     // store pointer to current_menu_buf there.
     *(g_main_domain) = (uint32_t)&current_menu_buf;
 

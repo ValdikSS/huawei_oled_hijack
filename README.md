@@ -10,6 +10,7 @@ Currently this library adds 8 new menu items:
  (Auto, GSM Only, UMTS Only, LTE Only, LTE -> UMTS, LTE -> GSM, UMTS -> GSM)
 * **TTL Mangler** (set TTL of outbound packets to 64 or 128)
 * **Anticensorship** ([DPI circumvention utility](https://github.com/bol-van/zapret))
+* **Ad Blocker** (using DNS blacklists)
 * **IMEI Changer** (switch between stock, random Android and random Windows Phone IMEI)
 * **Remote Access Control** (block telnet, ADB and web interface from being accessed over Wi-Fi and USB)
 * **No Battery Mode** (allows device to work without battery)

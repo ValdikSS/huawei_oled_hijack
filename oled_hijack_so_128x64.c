@@ -102,6 +102,7 @@ static const char *scripts[] = {
     "/app/bin/oled_hijack/radio_mode.sh",
     "/app/bin/oled_hijack/ttlfix.sh",
     "/app/bin/oled_hijack/anticensorship.sh",
+    "/app/bin/oled_hijack/adblock.sh",
     "/app/bin/oled_hijack/imei_change.sh",
     "/app/bin/oled_hijack/remote_access.sh",
     "/app/bin/oled_hijack/usb_mode.sh",
@@ -185,6 +186,7 @@ struct menu_s {
     uint8_t radio_mode;
     uint8_t ttlfix;
     uint8_t anticensorship;
+    uint8_t adblock;
     uint8_t imei_change;
     uint8_t remote_access;
     uint8_t usb_mode;
@@ -243,15 +245,18 @@ static void update_menu_state() {
                 menu_state.anticensorship = ret;
                 break;
             case 3:
-                menu_state.imei_change = ret;
+                menu_state.adblock = ret;
                 break;
             case 4:
-                menu_state.remote_access = ret;
+                menu_state.imei_change = ret;
                 break;
             case 5:
-                menu_state.usb_mode = ret;
+                menu_state.remote_access = ret;
                 break;
             case 6:
+                menu_state.usb_mode = ret;
+                break;
+            case 7:
                 menu_state.custom = ret;
                 break;
         }
@@ -349,18 +354,22 @@ static void create_and_write_menu(int menu_item) {
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Anticensorship:", current_menu_buf);
             break;
         case 3:
+            create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.adblock);
+            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Adblock:", current_menu_buf);
+            break;
+        case 4:
             create_menu_item(current_menu_buf, imei_change_mapping, menu_state.imei_change);
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Device IMEI:", current_menu_buf);
             break;
-        case 4:
+        case 5:
             create_menu_item(current_menu_buf, remote_access_mapping, menu_state.remote_access);
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Remote Access:", current_menu_buf);
             break;
-        case 5:
+        case 6:
             create_menu_item(current_menu_buf, usb_mode_mapping, menu_state.usb_mode);
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# USB Mode:", current_menu_buf);
             break;
-        case 6:
+        case 7:
             create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.custom);
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Custom Script:", current_menu_buf);
             break;

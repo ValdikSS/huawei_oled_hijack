@@ -2,7 +2,7 @@
  * Advanced OLED menu for Huawei E5770/E5885 portable LTE router.
  * 
  * Compile:
- * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -s -o oled_hijack.so oled_hijack_so.c
+ * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -s -o oled_hijack.so oled_hijack_so_128x64.c
  */
 
 #define _GNU_SOURCE
@@ -14,6 +14,7 @@
 #include <sys/wait.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <string.h>
 
 #define PAGE_INFORMATION 8
 #define PAGE_BEFORE_INFORMATION 5

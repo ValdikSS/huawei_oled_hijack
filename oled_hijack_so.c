@@ -442,10 +442,10 @@ int sprintf(char *str, const char *format, ...) {
 
         snprintf(str, 999,
                  "# Network Mode:\n%s" \
-                 "# TTL Mangling:\n%s" \
+                 "# TTL (req. reboot):\n%s" \
                  "# Anticensorship:\n%s" \
                  "# Adblock:\n%s" \
-                 "# Device IMEI:\n%s" \
+                 "# IMEI (req. reboot):\n%s" \
                  "# Remote Access:\n%s" \
                  "# Work w/o Battery:\n%s" \
                  "# USB Mode:\n%s%s%s",

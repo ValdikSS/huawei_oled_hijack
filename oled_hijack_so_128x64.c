@@ -348,7 +348,7 @@ static void create_and_write_menu(int menu_item) {
             break;
         case 1:
             create_menu_item(current_menu_buf, ttlfix_mapping, menu_state.ttlfix);
-            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# TTL Mangling:", current_menu_buf);
+            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# TTL (req. reboot):", current_menu_buf);
             break;
         case 2:
             create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.anticensorship);
@@ -360,7 +360,7 @@ static void create_and_write_menu(int menu_item) {
             break;
         case 4:
             create_menu_item(current_menu_buf, imei_change_mapping, menu_state.imei_change);
-            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Device IMEI:", current_menu_buf);
+            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# IMEI (req. reboot):", current_menu_buf);
             break;
         case 5:
             create_menu_item(current_menu_buf, remote_access_mapping, menu_state.remote_access);

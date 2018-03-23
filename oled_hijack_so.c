@@ -24,6 +24,7 @@
 #define LED_ON 0
 
 #define OLED_CUSTOM "/online/oled_custom.sh"
+#define SCRIPT_PATH "/app/bin/oled_hijack"
 
 /* 
  * Variables from "oled" binary.
@@ -64,14 +65,14 @@ static int (*notify_handler_async_real)(int subsystemid, int action, int subacti
  */
 
 static const char *scripts[] = {
-    "/app/bin/oled_hijack/radio_mode.sh",
-    "/app/bin/oled_hijack/ttlfix.sh",
-    "/app/bin/oled_hijack/anticensorship.sh",
-    "/app/bin/oled_hijack/adblock.sh",
-    "/app/bin/oled_hijack/imei_change.sh",
-    "/app/bin/oled_hijack/remote_access.sh",
-    "/app/bin/oled_hijack/no_battery.sh",
-    "/app/bin/oled_hijack/usb_mode.sh",
+    SCRIPT_PATH "/radio_mode.sh",
+    SCRIPT_PATH "/ttlfix.sh",
+    SCRIPT_PATH "/anticensorship.sh",
+    SCRIPT_PATH "/adblock.sh",
+    SCRIPT_PATH "/imei_change.sh",
+    SCRIPT_PATH "/remote_access.sh",
+    SCRIPT_PATH "/no_battery.sh",
+    SCRIPT_PATH "/usb_mode.sh",
     OLED_CUSTOM,
     NULL
 };

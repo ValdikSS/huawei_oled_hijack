@@ -419,6 +419,7 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
             fclose(fp);
         }
     }
+
     // store pointer to current_menu_buf there.
     *(g_main_domain) = (uint32_t)&current_menu_buf;
 
@@ -433,6 +434,13 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
     }
     fprintf(stderr, "notify_handler_async: %d, %d, %x\n", subsystemid, action, subaction);
     //fprintf(stderr, "!!!!!!! current page = %d !!!!!!!, led status = %d, main_domain = _%s_\n", *g_current_page, *g_led_status, g_main_domain);
+
+    if (subsystemid == EVT_OLED_WIFI_WAKEUP) {
+        // Do NOT notify "oled" of EVT_OLED_WIFI_WAKEUP event.
+        // Fixes "exiting sleep mode" on every button
+        // if Wi-Fi is completely disabled in web interface.
+        return 0;
+    }
 
     if (*g_current_page == PAGE_BEFORE_INFORMATION + 1) {
         // We have two Wi-Fi networks.

@@ -1,8 +1,10 @@
 /*
  * Advanced OLED menu for Huawei E5770/E5885 portable LTE router.
  * 
- * Compile:
- * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -s -o oled_hijack.so oled_hijack_so_128x64.c
+ * Compile for E5770:
+ * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -DE5770 -D__ANDROID_API__=19 -s -o oled_hijack.so oled_hijack_so_128x64.c
+ * Compile for E5885:
+ * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -DE5885 -D__ANDROID_API__=19 -s -o oled_hijack.so oled_hijack_so_128x64.c
  */
 
 #define _GNU_SOURCE
@@ -102,12 +104,13 @@ static int (*notify_handler_async_real)(int subsystemid, int action, int subacti
 
 static const char *scripts[] = {
     SCRIPT_PATH "/radio_mode.sh",
+    SCRIPT_PATH "/imei_change.sh",
     SCRIPT_PATH "/ttlfix.sh",
     SCRIPT_PATH "/anticensorship.sh",
     SCRIPT_PATH "/adblock.sh",
-    SCRIPT_PATH "/imei_change.sh",
     SCRIPT_PATH "/remote_access.sh",
     SCRIPT_PATH "/usb_mode.sh",
+    SCRIPT_PATH "/wifi.sh",
     OLED_CUSTOM,
     NULL
 };
@@ -186,12 +189,13 @@ static const char *enabled_disabled_mapping[] = {
 
 struct menu_s {
     uint8_t radio_mode;
+    uint8_t imei_change;
     uint8_t ttlfix;
     uint8_t anticensorship;
     uint8_t adblock;
-    uint8_t imei_change;
     uint8_t remote_access;
     uint8_t usb_mode;
+    uint8_t wifi;
     uint8_t custom;
 } menu_state;
 
@@ -241,16 +245,16 @@ static void update_menu_state() {
                 menu_state.radio_mode = ret;
                 break;
             case 1:
-                menu_state.ttlfix = ret;
+                menu_state.imei_change = ret;
                 break;
             case 2:
-                menu_state.anticensorship = ret;
+                menu_state.ttlfix = ret;
                 break;
             case 3:
-                menu_state.adblock = ret;
+                menu_state.anticensorship = ret;
                 break;
             case 4:
-                menu_state.imei_change = ret;
+                menu_state.adblock = ret;
                 break;
             case 5:
                 menu_state.remote_access = ret;
@@ -259,6 +263,9 @@ static void update_menu_state() {
                 menu_state.usb_mode = ret;
                 break;
             case 7:
+                menu_state.wifi = ret;
+                break;
+            case 8:
                 menu_state.custom = ret;
                 break;
         }
@@ -348,20 +355,20 @@ static void create_and_write_menu(int menu_item) {
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Network Mode:", current_menu_buf);
             break;
         case 1:
+            create_menu_item(current_menu_buf, imei_change_mapping, menu_state.imei_change);
+            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# IMEI (req. reboot):", current_menu_buf);
+            break;
+        case 2:
             create_menu_item(current_menu_buf, ttlfix_mapping, menu_state.ttlfix);
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# TTL (req. reboot):", current_menu_buf);
             break;
-        case 2:
+        case 3:
             create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.anticensorship);
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Anticensorship:", current_menu_buf);
             break;
-        case 3:
+        case 4:
             create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.adblock);
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Adblock:", current_menu_buf);
-            break;
-        case 4:
-            create_menu_item(current_menu_buf, imei_change_mapping, menu_state.imei_change);
-            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# IMEI (req. reboot):", current_menu_buf);
             break;
         case 5:
             create_menu_item(current_menu_buf, remote_access_mapping, menu_state.remote_access);
@@ -372,6 +379,10 @@ static void create_and_write_menu(int menu_item) {
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# USB Mode:", current_menu_buf);
             break;
         case 7:
+            create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.wifi);
+            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Wi-Fi (w/reboot):", current_menu_buf);
+            break;
+        case 8:
             create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.custom);
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Custom Script:", current_menu_buf);
             break;

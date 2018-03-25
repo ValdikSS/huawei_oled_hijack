@@ -9,11 +9,13 @@ enable_all () {
     iptables -D "$TABLE_NAME" -p tcp --dport 80 -j REJECT
     iptables -D "$TABLE_NAME" -p tcp --dport 23 -j REJECT
     iptables -D "$TABLE_NAME" -p tcp --dport 5555 -j REJECT
+    ip6tables -D "$TABLE_NAME" -p tcp --dport 80 -j REJECT
     return 0
 }
 
 disable_web () {
     iptables -I "$TABLE_NAME" -p tcp --dport 80 -j REJECT
+    ip6tables -I "$TABLE_NAME" -p tcp --dport 80 -j REJECT
     return 0
 }
 
@@ -39,6 +41,7 @@ handle_state () {
 if [[ "$1" == "boot" ]]
 then
     /system/bin/sleep 5
+    [[ "$CURRENT_MODE" == "" ]] && CURRENT_MODE="1" && echo "1" > $CONF_FILE
     handle_state
     exit 0
 fi

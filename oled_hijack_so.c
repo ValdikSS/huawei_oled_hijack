@@ -66,13 +66,14 @@ static int (*notify_handler_async_real)(int subsystemid, int action, int subacti
 
 static const char *scripts[] = {
     SCRIPT_PATH "/radio_mode.sh",
+    SCRIPT_PATH "/imei_change.sh",
     SCRIPT_PATH "/ttlfix.sh",
     SCRIPT_PATH "/anticensorship.sh",
     SCRIPT_PATH "/adblock.sh",
-    SCRIPT_PATH "/imei_change.sh",
     SCRIPT_PATH "/remote_access.sh",
     SCRIPT_PATH "/no_battery.sh",
     SCRIPT_PATH "/usb_mode.sh",
+    SCRIPT_PATH "/wifi.sh",
     OLED_CUSTOM,
     NULL
 };
@@ -149,13 +150,14 @@ static const char *enabled_disabled_mapping[] = {
 
 struct menu_s {
     uint8_t radio_mode;
+    uint8_t imei_change;
     uint8_t ttlfix;
     uint8_t anticensorship;
     uint8_t adblock;
-    uint8_t imei_change;
     uint8_t remote_access;
     uint8_t no_battery;
     uint8_t usb_mode;
+    uint8_t wifi;
     uint8_t custom;
 } menu_state;
 
@@ -204,16 +206,16 @@ static void update_menu_state() {
                 menu_state.radio_mode = ret;
                 break;
             case 1:
-                menu_state.ttlfix = ret;
+                menu_state.imei_change = ret;
                 break;
             case 2:
-                menu_state.anticensorship = ret;
+                menu_state.ttlfix = ret;
                 break;
             case 3:
-                menu_state.adblock = ret;
+                menu_state.anticensorship = ret;
                 break;
             case 4:
-                menu_state.imei_change = ret;
+                menu_state.adblock = ret;
                 break;
             case 5:
                 menu_state.remote_access = ret;
@@ -225,6 +227,9 @@ static void update_menu_state() {
                 menu_state.usb_mode = ret;
                 break;
             case 8:
+                menu_state.wifi = ret;
+                break;
+            case 9:
                 menu_state.custom = ret;
                 break;
         }
@@ -380,13 +385,14 @@ int register_notify_handler(int subsystemid, void *notify_handler_sync, void *no
 int sprintf(char *str, const char *format, ...) {
     int i = 0, j = 0;
     char network_mode_buf[1024];
+    char imei_change_buf[1024];
     char ttlfix_buf[1024];
     char anticensorship_buf[1024];
     char adblock_buf[1024];
-    char imei_change_buf[1024];
     char remote_access_buf[1024];
     char no_battery_buf[1024];
     char usb_mode_buf[1024];
+    char wifi_buf[1024];
     static char custom_buf[1024];
     static char custom_text_buf[] = "# Custom Script:\n";
 
@@ -414,13 +420,14 @@ int sprintf(char *str, const char *format, ...) {
         fprintf(stderr, "FOUND STRING!\n");
         update_menu_state();
         create_menu_item(network_mode_buf, network_mode_mapping, menu_state.radio_mode);
+        create_menu_item(imei_change_buf, imei_change_mapping, menu_state.imei_change);
         create_menu_item(ttlfix_buf, ttlfix_mapping, menu_state.ttlfix);
         create_menu_item(anticensorship_buf, enabled_disabled_mapping, menu_state.anticensorship);
         create_menu_item(adblock_buf, enabled_disabled_mapping, menu_state.adblock);
-        create_menu_item(imei_change_buf, imei_change_mapping, menu_state.imei_change);
         create_menu_item(remote_access_buf, remote_access_mapping, menu_state.remote_access);
         create_menu_item(no_battery_buf, enabled_disabled_mapping, menu_state.no_battery);
         create_menu_item(usb_mode_buf, usb_mode_mapping, menu_state.usb_mode);
+        create_menu_item(wifi_buf, enabled_disabled_mapping, menu_state.wifi);
 
         if (custom_script_enabled == -1) {
             if (access(OLED_CUSTOM, F_OK) == 0) {
@@ -442,13 +449,14 @@ int sprintf(char *str, const char *format, ...) {
 
         snprintf(str, 999,
                  "# Network Mode:\n%s" \
+                 "# IMEI (req. reboot):\n%s" \
                  "# TTL (req. reboot):\n%s" \
                  "# Anticensorship:\n%s" \
                  "# Adblock:\n%s" \
-                 "# IMEI (req. reboot):\n%s" \
                  "# Remote Access:\n%s" \
                  "# Work w/o Battery:\n%s" \
-                 "# USB Mode:\n%s%s%s",
+                 "# USB Mode:\n%s",
+                 "# Wi-Fi (w/reboot):\n%s%s%s" \
                  network_mode_buf,
                  ttlfix_buf,
                  anticensorship_buf,
@@ -457,6 +465,7 @@ int sprintf(char *str, const char *format, ...) {
                  remote_access_buf,
                  no_battery_buf,
                  usb_mode_buf,
+                 wifi_buf,
                  custom_text_buf,
                  custom_buf
         );

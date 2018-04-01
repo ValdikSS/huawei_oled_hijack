@@ -34,21 +34,24 @@
 /* 
  * Variables from "oled" binary.
  *
- * E5770:
  *  g_current_page is a current menu page. 
- *  0 for main screen, 5 for Wi-Fi info, 7 for IP
- *  address, 8 for homepage.
+ *  0 for main screen, 5 for Wi-Fi info, 7 for IP address, 8 for homepage.
  *
- *  Current values are based on E5770 21.318.01.00.00 oled binary.
- *  MD5: 67a52b23d7d2d13ffeca446fcc30eccd
+ *  g_led_status is a status of LED backlight.
+ *  0 for enabled, 1 for timed out but still enabled, 2 for disabled.
+ *  g_led_status is usually the latest DWORD in .data segment, and
+ *  could be found in functions which use lcd_control_operate and bsp_led_ctrl.
  *
+ *  g_main_domain is a char buffer for storing homepage domain, but it is used
+ *  as a storage for a pointer to another buffer, which is created by oled_hijack.
  *
- * E5885:
- *  g_current_page is a current menu page.
- *  0 for main screen, 5 for Wi-Fi info, 7 for IP
- *  address, 8 for homepage.
+ *  g_loaddomain_code is a code which loads first character from g_main_domain
+ *  to check if it's NULL. It is patched to load the pointer from first DWORD.
  *
- *  Current values are based on E5885 21.236.05.01.233 oled binary.
+ *  For E5770, current values are based on 21.329.01.00.00 oled binary.
+ *  MD5: 6209a2b9560b3a7c2ca26e55f5861fa4
+ *
+ *  For E5885, current values are based on 21.236.05.01.233 oled binary.
  *  MD5: 96add6d12bc765cbbfed43a88e93e39a
  *
  */
@@ -65,11 +68,20 @@ static uint32_t *g_main_domain = (uint32_t*)(0x0000416C); // end_data + 0x416C, 
 static uint16_t *g_loaddomain_code = (uint16_t*)(0x0000DB78); // start_text + 0xDB78, LDRB R0, [R1]
 #endif
 
-#ifdef E5770
-static uint32_t *g_current_page = (uint32_t*)(0x00003A24); // start_data + 0x3A24. 8 is for homepage.
+// for 21.318.01.00.00 oled binary, MD5: 67a52b23d7d2d13ffeca446fcc30eccd. This binary has debug text strings.
+/*#ifdef E5770
+static uint32_t *g_current_page = (uint32_t*)(0x00003A24); // end_data + 0x3A24. 8 is for homepage.
 static uint32_t *g_led_status = (uint32_t*)(0x00002234);  // start_data + 0x2234
-static uint32_t *g_main_domain = (uint32_t*)(0x00003804); // start_data + 0x3804, used as dword pointer, not char!!!
+static uint32_t *g_main_domain = (uint32_t*)(0x00003804); // end_data + 0x3804, used as dword pointer, not char!!!
 static uint16_t *g_loaddomain_code = (uint16_t*)(0x0000B86A); // start_text + 0xB86A, LDRB R0, [R1]
+#endif*/
+
+// for 21.329.01.00.00 oled binary. This binary doesn't have debug text strings.
+#ifdef E5770
+static uint32_t *g_current_page = (uint32_t*)(0x00003A78); // end_data + 0x3A78. 8 is for homepage.
+static uint32_t *g_led_status = (uint32_t*)(0x00002298);  // start_data + 0x002298 (or BSS - 0x4, latest DWORD in data segment)
+static uint32_t *g_main_domain = (uint32_t*)(0x00003858); // end_data + 0x3854 (bss + 0x3854), used as dword pointer, not char!!!
+static uint16_t *g_loaddomain_code = (uint16_t*)(0x000074D8); // start_text + 0x74D8, LDRB R3, [R1]
 #endif
 
 

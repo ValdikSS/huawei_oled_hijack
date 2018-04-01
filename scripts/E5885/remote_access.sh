@@ -28,8 +28,8 @@ disable_adb () {
 }
 
 handle_state () {
-    [[ "$CURRENT_MODE" == "0" ]] || [[ "$CURRENT_MODE" == "" ]] && enable_all && disable_adb
-    [[ "$CURRENT_MODE" == "1" ]] && enable_all && disable_telnet && disable_adb
+    [[ "$CURRENT_MODE" == "0" ]] || [[ "$CURRENT_MODE" == "" ]] && enable_all && disable_telnet && disable_adb
+    [[ "$CURRENT_MODE" == "1" ]] && enable_all && disable_adb
     [[ "$CURRENT_MODE" == "2" ]] && enable_all
     [[ "$CURRENT_MODE" == "3" ]] && enable_all && disable_web
     [[ "$CURRENT_MODE" == "4" ]] && enable_all && disable_telnet && disable_adb && disable_web

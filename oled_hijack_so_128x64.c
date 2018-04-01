@@ -155,9 +155,9 @@ static const char *imei_change_mapping[] = {
 
 static const char *remote_access_mapping[] = {
     // 0
-    "Web & Telnet",
-    // 1
     "Web only",
+    // 1
+    "Web & Telnet",
     // 2
     "Web, Telnet, ADB",
     // 3

@@ -2,7 +2,7 @@
  * Advanced OLED menu for Huawei E5372 portable LTE router.
  * 
  * Compile:
- * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -s -o oled_hijack.so oled_hijack_so.c
+ * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -s -D__ANDROID_API__=9 -o oled_hijack.so oled_hijack_so.c
  */
 
 #define _GNU_SOURCE
@@ -116,9 +116,9 @@ static const char *imei_change_mapping[] = {
 
 static const char *remote_access_mapping[] = {
     // 0
-    "Web & Telnet",
-    // 1
     "Web only",
+    // 1
+    "Web & Telnet",
     // 2
     "Web, Telnet, ADB",
     // 3

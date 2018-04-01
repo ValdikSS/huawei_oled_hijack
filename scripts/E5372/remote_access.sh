@@ -32,8 +32,8 @@ disable_adb () {
 }
 
 handle_state () {
-    [[ "$CURRENT_MODE" == "0" ]] || [[ "$CURRENT_MODE" == "" ]] && enable_all && disable_adb
-    [[ "$CURRENT_MODE" == "1" ]] && enable_all && disable_telnet && disable_adb
+    [[ "$CURRENT_MODE" == "0" ]] || [[ "$CURRENT_MODE" == "" ]] && enable_all && disable_telnet && disable_adb
+    [[ "$CURRENT_MODE" == "1" ]] && enable_all && disable_adb
     [[ "$CURRENT_MODE" == "2" ]] && enable_all
     [[ "$CURRENT_MODE" == "3" ]] && enable_all && disable_web
     [[ "$CURRENT_MODE" == "4" ]] && enable_all && disable_telnet && disable_adb && disable_web
@@ -43,7 +43,7 @@ handle_state () {
 if [[ "$1" == "boot" ]]
 then
     /system/bin/sleep 5
-    [[ "$CURRENT_MODE" == "" ]] && CURRENT_MODE="1" && echo "1" > $CONF_FILE
+    [[ "$CURRENT_MODE" == "" ]] && CURRENT_MODE="0" && echo "0" > $CONF_FILE
     handle_state
     exit 0
 fi

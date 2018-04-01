@@ -412,7 +412,7 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
 
             // start_data is not really a start of DATA segment, but an end of previous segment.
             // There are other segments before data. We need to skip them.
-            start_data += 4096 + 512 + 12;
+            start_data = (start_data & 0xFFFFF000) + 0x00001000;
 
             // Add start_data to offsets
             g_current_page = (uint32_t*)(end_data + (uint32_t)g_current_page);

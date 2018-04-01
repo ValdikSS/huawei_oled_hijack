@@ -2,9 +2,11 @@
  * Advanced OLED menu for Huawei E5770/E5885 portable LTE router.
  * 
  * Compile for E5770:
- * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -DE5770 -D__ANDROID_API__=19 -s -o oled_hijack.so oled_hijack_so_128x64.c
+ * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -DE5770 \
+ * -D__ANDROID_API__=19 -s -o oled_hijack.so oled_hijack_so_128x64.c
  * Compile for E5885:
- * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -DE5885 -D__ANDROID_API__=19 -s -o oled_hijack.so oled_hijack_so_128x64.c
+ * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -DE5885 \
+ * -D__ANDROID_API__=19 -s -o oled_hijack.so oled_hijack_so_128x64.c
  */
 
 #define _GNU_SOURCE
@@ -95,10 +97,13 @@ static int lock_buttons = 0;
 static int current_infopage_item = -1;
 
 // Assuming we have only one 2GHz Wi-Fi network by default.
-static int page_before_information = PAGE_BEFORE_INFORMATION;
+static unsigned int page_before_information = PAGE_BEFORE_INFORMATION;
 
 static uint32_t startcode = 0; // start of TEXT segment
-static uint32_t start_data = 0; // start of DATA segment
+// NOT REALLY A start of DATA segment
+// proc(5) is incorrect, read Documentation/filesystems/proc.txt!
+// https://stackoverflow.com/questions/29780731/wrong-entries-with-proc-pid-stat
+static uint32_t start_data = 0;
 static uint32_t end_data = 0; // end of DATA segment and start of BSS
 static char dummy[100];
 
@@ -457,8 +462,9 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
             scripts_count--;
         }
     }
-    fprintf(stderr, "notify_handler_async: %d, %d, %x\n", subsystemid, action, subaction);
-    //fprintf(stderr, "!!!!!!! current page = %d !!!!!!!, led status = %d, main_domain = _%s_\n", *g_current_page, *g_led_status, g_main_domain);
+    //fprintf(stderr, "notify_handler_async: %d, %d, %x\n", subsystemid, action, subaction);
+    //fprintf(stderr, "!!!!!!! current page = %d !!!!!!!, led status = %d, main_domain = _%s_\n",
+    //        *g_current_page, *g_led_status, g_main_domain);
 
     if (subsystemid == EVT_OLED_WIFI_WAKEUP) {
         // Do NOT notify "oled" of EVT_OLED_WIFI_WAKEUP event.

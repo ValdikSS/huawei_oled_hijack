@@ -11,11 +11,11 @@
 #include <sys/types.h>
 
 #ifndef BINARY
-#error "You should set BINARY -DBINARY=/path/to/binfile"
+#error "You should set BINARY -DBINARY='"/path/to/binfile"' "
 #endif
 
 #ifndef PRELOADLIB
-#error "You should set PRELOADLIB -PRELOADLIB=/path/to/lib.so"
+#error "You should set PRELOADLIB -DPRELOADLIB='"/path/to/lib.so"' "
 #endif
 
 int main(int argc, char *argv[], char *envp[]) {

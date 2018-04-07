@@ -127,7 +127,7 @@ static const char *scripts[] = {
     SCRIPT_PATH "/adblock.sh",
     SCRIPT_PATH "/remote_access.sh",
     SCRIPT_PATH "/usb_mode.sh",
-    SCRIPT_PATH "/wifi.sh",
+    SCRIPT_PATH "/wifi_ext.sh",
     OLED_CUSTOM,
     NULL
 };
@@ -216,7 +216,7 @@ struct menu_s {
     uint8_t adblock;
     uint8_t remote_access;
     uint8_t usb_mode;
-    uint8_t wifi;
+    uint8_t wifi_ext;
     uint8_t custom;
 } menu_state;
 
@@ -284,7 +284,7 @@ static void update_menu_state() {
                 menu_state.usb_mode = ret;
                 break;
             case 7:
-                menu_state.wifi = ret;
+                menu_state.wifi_ext = ret;
                 break;
             case 8:
                 menu_state.custom = ret;
@@ -400,8 +400,8 @@ static void create_and_write_menu(int menu_item) {
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# USB Mode:", current_menu_buf);
             break;
         case 7:
-            create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.wifi);
-            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Wi-Fi (w/reboot):", current_menu_buf);
+            create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.wifi_ext);
+            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Wi-Fi Extender:", current_menu_buf);
             break;
         case 8:
             create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.custom);

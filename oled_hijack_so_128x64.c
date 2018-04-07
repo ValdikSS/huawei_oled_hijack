@@ -188,10 +188,14 @@ static const char *usb_mode_mapping[] = {
     // 0
     "Stock",
     // 1
-    "AT, Network, SD",
+    "RNDIS (Windows)",
     // 2
-    "AT, Network",
+    "ECM (Linux)",
     // 3
+    "Modem",
+    // 4
+    "Modem (NCM)",
+    // 5
     "Debug mode",
     NULL
 };

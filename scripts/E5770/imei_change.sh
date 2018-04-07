@@ -1,6 +1,6 @@
 #!/system/bin/busybox sh
 
-IMEI_SET_COMMAND='AT^CIMEI'
+IMEI_SET_COMMAND='AT^PHYNUM=IMEI'
 
 ATC="/app/bin/oled_hijack/atc"
 IMEI_GENERATOR="/app/bin/oled_hijack/imei_generator"
@@ -52,10 +52,10 @@ then
         exit 253
     fi
 
-    [[ "$CURRENT_IMEI_CUT" == "35428207" ]] && echo -e "$IMEI_SET_COMMAND=\"$IMEI_WINPHONE\"\r" > /dev/appvcom && echo $IMEI_WINPHONE > $CURRENT_IMEI_FILE && exit 0
-    [[ "$CURRENT_IMEI_CUT" == "35365206" ]] && echo -e "$IMEI_SET_COMMAND=\"$IMEI_BACKUP\"\r" > /dev/appvcom && echo $IMEI_BACKUP > $CURRENT_IMEI_FILE && exit 0
+    [[ "$CURRENT_IMEI_CUT" == "35428207" ]] && echo -e "$IMEI_SET_COMMAND,$IMEI_WINPHONE\r" > /dev/appvcom && echo $IMEI_WINPHONE > $CURRENT_IMEI_FILE && exit 0
+    [[ "$CURRENT_IMEI_CUT" == "35365206" ]] && echo -e "$IMEI_SET_COMMAND,$IMEI_BACKUP\r" > /dev/appvcom && echo $IMEI_BACKUP > $CURRENT_IMEI_FILE && exit 0
 
     # special case for factory imei
-    echo -e "$IMEI_SET_COMMAND=\"$IMEI_ANDROID\"\r" > /dev/appvcom && echo $IMEI_ANDROID > $CURRENT_IMEI_FILE
+    echo -e "$IMEI_SET_COMMAND,$IMEI_ANDROID\r" > /dev/appvcom && echo $IMEI_ANDROID > $CURRENT_IMEI_FILE
 
 fi

@@ -32,6 +32,8 @@ static int (*wififunc)(
     const char *function_name, int req_type_get_post,
     char *req_body, size_t req_size) = NULL;
 
+static void (*global_release_msg_real)(void *ptr) = NULL;
+
 static int create_socket(char* path) {
     struct sockaddr_un addr;
     int fd;
@@ -95,11 +97,7 @@ static void* wifi_hookserver(void* nothing) {
                 ret = (void*)wififunc(libfunction, reqtype, c_token, strlen(c_token));
                 if (ret) {
                     dprintf(client, "%s\n", ret);
-                    if (strstr(ret, "<error>") == NULL &&
-                        strstr(ret, "<response>OK</response>") == NULL)
-                    {
-                        free(ret);
-                    }
+                    global_release_msg_real(ret);
                 }
                 close(client);
             }
@@ -121,6 +119,7 @@ int webserver_register_hookfunction(int subsystemnum, const char *subsystemname,
 
     if (subsystemnum == SUBSYSTEM_WLAN && !wififunc) {
         wififunc = hookfunction;
+        global_release_msg_real = global_release_msg;
         if (pthread_create(&wifihookthread, NULL, wifi_hookserver, NULL)) {
             perror("Error creating thread.");
         }

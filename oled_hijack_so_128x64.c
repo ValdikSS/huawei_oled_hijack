@@ -125,7 +125,7 @@ static const char *scripts[] = {
     SCRIPT_PATH "/imei_change.sh",
     SCRIPT_PATH "/ttlfix.sh",
     SCRIPT_PATH "/anticensorship.sh",
-    SCRIPT_PATH "/adblock.sh",
+    SCRIPT_PATH "/dnscrypt.sh",
     SCRIPT_PATH "/remote_access.sh",
     SCRIPT_PATH "/usb_mode.sh",
     SCRIPT_PATH "/wifi_ext.sh",
@@ -158,6 +158,16 @@ static const char *ttlfix_mapping[] = {
     "TTL=128",
     // 3
     "TTL=65 (WiFi Ext.)",
+    NULL
+};
+
+static const char *dnscrypt_mapping[] = {
+    // 0
+    "Disabled",
+    // 1
+    "Enabled",
+    // 2
+    "Enabled + adblock",
     NULL
 };
 
@@ -209,12 +219,13 @@ static const char *enabled_disabled_mapping[] = {
     NULL
 };
 
+/* Menu state */
 struct menu_s {
     uint8_t radio_mode;
     uint8_t imei_change;
     uint8_t ttlfix;
     uint8_t anticensorship;
-    uint8_t adblock;
+    uint8_t dnscrypt;
     uint8_t remote_access;
     uint8_t usb_mode;
     uint8_t wifi_ext;
@@ -276,7 +287,7 @@ static void update_menu_state() {
                 menu_state.anticensorship = ret;
                 break;
             case 4:
-                menu_state.adblock = ret;
+                menu_state.dnscrypt = ret;
                 break;
             case 5:
                 menu_state.remote_access = ret;
@@ -389,8 +400,8 @@ static void create_and_write_menu(int menu_item) {
             snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Anticensorship:", current_menu_buf);
             break;
         case 4:
-            create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.adblock);
-            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Adblock:", current_menu_buf);
+            create_menu_item(current_menu_buf, dnscrypt_mapping, menu_state.dnscrypt);
+            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# DNSCrypt:", current_menu_buf);
             break;
         case 5:
             create_menu_item(current_menu_buf, remote_access_mapping, menu_state.remote_access);

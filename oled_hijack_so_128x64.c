@@ -506,10 +506,10 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
                 return notify_handler_async_real(subsystemid, BUTTON_MENU, subaction);
             }
             else if (action == BUTTON_MENU) {
+                LOCKBUTTONS(1);
                 if (*g_current_page == page_before_information) {
                     // enter advanced menu if we're on an IP address page and pressed BUTTON_MENU
                     enter_menu();
-                    LOCKBUTTONS(1);
                     update_menu_state();
                     create_and_write_menu(current_infopage_item);
                     LOCKBUTTONS(0);
@@ -525,6 +525,7 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
                 else {
                     exit_menu();
                 }
+                LOCKBUTTONS(0);
             }
         }
     }

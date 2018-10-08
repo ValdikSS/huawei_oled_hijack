@@ -4,6 +4,7 @@
  * Compile for E5770:
  * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -DE5770 \
  * -D__ANDROID_API__=19 -s -o oled_hijack.so oled_hijack_so_128x64.c
+ *
  * Compile for E5885:
  * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -DE5885 \
  * -D__ANDROID_API__=19 -s -o oled_hijack.so oled_hijack_so_128x64.c
@@ -64,26 +65,26 @@
 
 // These values get aligned to real addresses from notify_handler_async
 #ifdef E5885
-static uint32_t *g_current_page = (uint32_t*)(0x00004438); // end_data + 0x4438. 8 is for homepage.
-static uint32_t *g_led_status = (uint32_t*)(0x00002C90);  // start_data + 0x2C90
-static uint32_t *g_main_domain = (uint32_t*)(0x0000416C); // end_data + 0x416C, used as dword pointer, not char!!!
-static uint16_t *g_loaddomain_code = (uint16_t*)(0x0000DB78); // start_text + 0xDB78, LDRB R0, [R1]
+static uint32_t volatile *g_current_page = (uint32_t volatile *)(0x00004438); // end_data + 0x4438. 8 is for homepage.
+static uint32_t volatile *g_led_status = (uint32_t volatile *)(0x00002C90);  // start_data + 0x2C90
+static uint32_t volatile *g_main_domain = (uint32_t volatile *)(0x0000416C); // end_data + 0x416C, used as dword pointer, not char!!!
+static uint16_t volatile *g_loaddomain_code = (uint16_t volatile *)(0x0000DB78); // start_text + 0xDB78, LDRB R0, [R1]
 #endif
 
 // for 21.318.01.00.00 oled binary, MD5: 67a52b23d7d2d13ffeca446fcc30eccd. This binary has debug text strings.
 /*#ifdef E5770
-static uint32_t *g_current_page = (uint32_t*)(0x00003A24); // end_data + 0x3A24. 8 is for homepage.
-static uint32_t *g_led_status = (uint32_t*)(0x00002234);  // start_data + 0x2234
-static uint32_t *g_main_domain = (uint32_t*)(0x00003804); // end_data + 0x3804, used as dword pointer, not char!!!
-static uint16_t *g_loaddomain_code = (uint16_t*)(0x0000B86A); // start_text + 0xB86A, LDRB R0, [R1]
+static uint32_t volatile *g_current_page = (uint32_t volatile *)(0x00003A24); // end_data + 0x3A24. 8 is for homepage.
+static uint32_t volatile *g_led_status = (uint32_t volatile *)(0x00002234);  // start_data + 0x2234
+static uint32_t volatile *g_main_domain = (uint32_t volatile *)(0x00003804); // end_data + 0x3804, used as dword pointer, not char!!!
+static uint16_t volatile *g_loaddomain_code = (uint16_t volatile *)(0x0000B86A); // start_text + 0xB86A, LDRB R0, [R1]
 #endif*/
 
 // for 21.329.01.00.00 oled binary. This binary doesn't have debug text strings.
 #ifdef E5770
-static uint32_t *g_current_page = (uint32_t*)(0x00003A78); // end_data + 0x3A78. 8 is for homepage.
-static uint32_t *g_led_status = (uint32_t*)(0x00002298);  // start_data + 0x002298 (or BSS - 0x4, latest DWORD in data segment)
-static uint32_t *g_main_domain = (uint32_t*)(0x00003858); // end_data + 0x3854 (bss + 0x3854), used as dword pointer, not char!!!
-static uint16_t *g_loaddomain_code = (uint16_t*)(0x000074D8); // start_text + 0x74D8, LDRB R3, [R1]
+static uint32_t volatile *g_current_page = (uint32_t volatile *)(0x00003A78); // end_data + 0x3A78. 8 is for homepage.
+static uint32_t volatile *g_led_status = (uint32_t volatile *)(0x00002298);  // start_data + 0x002298 (or BSS - 0x4, latest DWORD in data segment)
+static uint32_t volatile *g_main_domain = (uint32_t volatile *)(0x00003858); // end_data + 0x3854 (bss + 0x3854), used as dword pointer, not char!!!
+static uint16_t volatile *g_loaddomain_code = (uint16_t volatile *)(0x000074D8); // start_text + 0x74D8, LDRB R3, [R1]
 #endif
 
 
@@ -436,10 +437,10 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
             start_data = (start_data & 0xFFFFF000) + 0x00001000;
 
             // Add start_data to offsets
-            g_current_page = (uint32_t*)(end_data + (uint32_t)g_current_page);
-            g_led_status = (uint32_t*)(start_data + (uint32_t)g_led_status);
-            g_main_domain = (uint32_t*)(end_data + (uint32_t)g_main_domain);
-            g_loaddomain_code = (uint16_t*)(startcode + (uint32_t)g_loaddomain_code);
+            g_current_page = (uint32_t volatile *)(end_data + (uint32_t)g_current_page);
+            g_led_status = (uint32_t volatile *)(start_data + (uint32_t)g_led_status);
+            g_main_domain = (uint32_t volatile *)(end_data + (uint32_t)g_main_domain);
+            g_loaddomain_code = (uint16_t volatile *)(startcode + (uint32_t)g_loaddomain_code);
 
             // unprotecting code to patch it
             UNPROTECT((uint32_t)g_loaddomain_code, 4096);

@@ -39,9 +39,9 @@
  * MD5: eb4e65509e16c2023f4f9a5e00cd0785
  * 
  */
-static uint32_t *g_current_page = (uint32_t*)(0x00029f94);
-static uint32_t *g_current_Info_page = (uint32_t*)(0x0002CAB8);
-static uint32_t *g_led_status = (uint32_t*)(0x00029FA8);
+static uint32_t volatile *g_current_page = (uint32_t volatile *)(0x00029f94);
+static uint32_t volatile *g_current_Info_page = (uint32_t volatile *)(0x0002CAB8);
+static uint32_t volatile *g_led_status = (uint32_t volatile *)(0x00029FA8);
 
 static uint32_t first_info_screen = 0;
 

@@ -379,6 +379,10 @@ static void exit_menu() {
     *g_current_page = PAGE_INFORMATION;
 }
 
+/*
+ * Menu creating functiom
+ *
+ */
 static void create_and_write_menu(int menu_item) {
     char tempbuf[1024];
 

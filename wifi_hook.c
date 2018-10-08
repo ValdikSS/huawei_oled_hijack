@@ -1,5 +1,7 @@
 /*
  * Wi-Fi web function hook Huawei E5770/E5885 portable LTE router.
+ * Designed for switching Wi-Fi Extender functionality via console.
+ * Could be extended to support any other functions from "router" executable.
  * 
  * Compile:
  * arm-linux-androideabi-gcc -shared -ldl -fPIC -pthread -DHOOK -O2 -D__ANDROID_API__=19 -s -o wifi_hook.so wifi_hook.c
@@ -16,13 +18,16 @@
 #include <sys/un.h>
 #include <pthread.h>
 
+// Subsystem ID
 #define SUBSYSTEM_WLAN 16
+// UNIX socket name to listen/connect to
 #define SOCK_NAME "/var/wifihook"
 
 #if !defined(HOOK) && !defined(CLIENT)
 #error "You should define either -DHOOK or -DCLIENT"
 #endif
 
+// Building wifi_hook.so
 #ifdef HOOK
 static int (*webserver_r_h_real)(
     int subsystemnum, const char *subsystemname,
@@ -129,7 +134,7 @@ int webserver_register_hookfunction(int subsystemnum, const char *subsystemname,
 }
 #endif
 
-
+// Building wifi_hook_client
 #ifdef CLIENT
 static int open_socket(char* path) {
     struct sockaddr_un addr;

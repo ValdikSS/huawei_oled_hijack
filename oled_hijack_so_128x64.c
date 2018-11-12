@@ -31,9 +31,6 @@
 #define BUTTON_MENU 8
 #define LED_ON 0
 
-#define OLED_CUSTOM "/online/oled_custom.sh"
-#define SCRIPT_PATH "/app/bin/oled_hijack"
-
 /* 
  * Variables from "oled" binary.
  *
@@ -108,8 +105,6 @@ static uint32_t start_data = 0;
 static uint32_t end_data = 0; // end of DATA segment and start of BSS
 static char dummy[100];
 
-static char current_menu_buf[1024];
-
 /*
  * Real handlers from oled binary and libraries
  */
@@ -119,21 +114,7 @@ static int (*notify_handler_async_real)(int subsystemid, int action, int subacti
 /* 
  * Menu-related configuration
  */
-
-static const char *scripts[] = {
-    SCRIPT_PATH "/radio_mode.sh",
-    SCRIPT_PATH "/imei_change.sh",
-    SCRIPT_PATH "/ttlfix.sh",
-    SCRIPT_PATH "/anticensorship.sh",
-    SCRIPT_PATH "/dnscrypt.sh",
-    SCRIPT_PATH "/remote_access.sh",
-    SCRIPT_PATH "/usb_mode.sh",
-    SCRIPT_PATH "/wifi_ext.sh",
-    OLED_CUSTOM,
-    NULL
-};
-
-static int scripts_count = 0;
+static char current_menu_buf[1024];
 
 static const char *network_mode_mapping[] = {
     // 0
@@ -161,7 +142,7 @@ static const char *ttlfix_mapping[] = {
     NULL
 };
 
-static const char *dnscrypt_mapping[] = {
+static const char *dns_over_tls_mapping[] = {
     // 0
     "Disabled",
     // 1
@@ -219,18 +200,32 @@ static const char *enabled_disabled_mapping[] = {
     NULL
 };
 
-/* Menu state */
-struct menu_s {
-    uint8_t radio_mode;
-    uint8_t imei_change;
-    uint8_t ttlfix;
-    uint8_t anticensorship;
-    uint8_t dnscrypt;
-    uint8_t remote_access;
-    uint8_t usb_mode;
-    uint8_t wifi_ext;
-    uint8_t custom;
-} menu_state;
+#define OLED_CUSTOM "/online/oled_custom.sh"
+#define SCRIPT_PATH "/app/bin/oled_hijack"
+
+struct script_s {
+    const char *title;
+    const char *path;
+    const char **mapping;
+    uint8_t slow_script;
+    int state;
+};
+
+static struct script_s scripts[] = {
+    {"# Network Mode:", SCRIPT_PATH "/radio_mode.sh", network_mode_mapping, 1, 0},
+    {"# IMEI (req. reboot):", SCRIPT_PATH "/imei_change.sh", imei_change_mapping, 1, 0},
+    {"# TTL (req. reboot):", SCRIPT_PATH "/ttlfix.sh", ttlfix_mapping, 0, 0},
+    {"# Anticensorship:", SCRIPT_PATH "/anticensorship.sh", enabled_disabled_mapping, 0, 0},
+    {"# DNS over TLS:", SCRIPT_PATH "/dns_over_tls.sh", dns_over_tls_mapping, 1, 0},
+    {"# Remote Access:", SCRIPT_PATH "/remote_access.sh", remote_access_mapping, 0, 0},
+    {"# USB Mode:", SCRIPT_PATH "/usb_mode.sh", usb_mode_mapping, 0, 0},
+    {"# Wi-Fi Extender:", SCRIPT_PATH "/wifi_ext.sh", enabled_disabled_mapping, 1, 0},
+    /* Is it assumed that Custom Script is always the latest item, don't remove it. */
+    {"# Custom Script:", OLED_CUSTOM, enabled_disabled_mapping, 1, 0}
+};
+
+// Number of scripts in the array above. Filled in runtime.
+static int scripts_count = 0;
 
 /* *************************************** */
 
@@ -264,44 +259,12 @@ static int call_script(char const *script, char const *additional_argument) {
 }
 
 /*
- * Call every script in scripts array and update
- * menu_state struct.
- * Called in sprintf.
+ * Call selected script in scripts array and update its state.
+ * Called in notify_handler_async.
  */
-static void update_menu_state() {
-    int i, ret;
-
-    for (i = 0; scripts[i] != NULL; i++) {
-        ret = call_script(scripts[i], "get");
-        switch (i) {
-            case 0:
-                menu_state.radio_mode = ret;
-                break;
-            case 1:
-                menu_state.imei_change = ret;
-                break;
-            case 2:
-                menu_state.ttlfix = ret;
-                break;
-            case 3:
-                menu_state.anticensorship = ret;
-                break;
-            case 4:
-                menu_state.dnscrypt = ret;
-                break;
-            case 5:
-                menu_state.remote_access = ret;
-                break;
-            case 6:
-                menu_state.usb_mode = ret;
-                break;
-            case 7:
-                menu_state.wifi_ext = ret;
-                break;
-            case 8:
-                menu_state.custom = ret;
-                break;
-        }
+static void update_menu_state(int menu_page) {
+    if (menu_page >= 0 && menu_page <= scripts_count) {
+        scripts[menu_page].state = call_script(scripts[menu_page].path, "get");
     }
 }
 
@@ -311,15 +274,16 @@ static void update_menu_state() {
  * Called when the POWER button is pressed on hijacked page.
  */
 static void handle_menu_state_change(int menu_page) {
-    call_script(scripts[menu_page], "set_next");
+    call_script(scripts[menu_page].path, "set_next");
 }
 
 /*
  * Create menu of 3 items.
  */
-static void create_menu_item(char *buf, const char *mapping[], int current_item) {
+static void create_menu_item(char *buf, size_t bufsize, const char *mapping[],
+                             int current_item) {
     int i, char_list_size = 0;
-    char nothing[2] = "";
+    static const char nothing[] = "";
 
     for (i = 0; mapping[i] != NULL; i++) {
         char_list_size++;
@@ -328,7 +292,7 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
     fprintf(stderr, "Trying to create menu\n");
 
     if (current_item == 0) {
-        snprintf(buf, 1024 - 1,
+        snprintf(buf, bufsize,
              "   > %s\n     %s\n     %s\n",
              (mapping[current_item]),
              ((char_list_size >= 2) ? mapping[current_item + 1] : nothing),
@@ -336,7 +300,7 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
         );
     }
     else if (current_item == char_list_size - 1 && char_list_size >= 3) {
-        snprintf(buf, 1024 - 1,
+        snprintf(buf, bufsize,
              "     %s\n     %s\n   > %s\n",
              ((current_item >= 2 && char_list_size > 2) ? mapping[current_item - 2] : nothing),
              ((current_item >= 1 && char_list_size > 1) ? mapping[current_item - 1] : nothing),
@@ -344,7 +308,7 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
         );
     }
     else if (current_item <= char_list_size) {
-        snprintf(buf, 1024 - 1,
+        snprintf(buf, bufsize,
             "     %s\n   > %s\n     %s\n",
             ((current_item > 0) ? mapping[current_item - 1] : nothing),
             (mapping[current_item]),
@@ -353,88 +317,73 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
         );
     }
     else {
-        snprintf(buf, 1024 - 1,
+        snprintf(buf, bufsize,
             "     ERROR\n\n\n");
     }
 }
 
-/* 
- * Function which presses buttons to leave information page
- * and enter it again, to force redraw.
- * Very dirty, but works.
- * 
+/*
+ * Function which reverts menu page to enter it again, to force redraw.
  * Assuming information page is a first menu item.
- * 
  */
 static void continue_menu() {
     *g_current_page = page_before_information;
 }
 
+/*
+ * This function clears additional menu page state.
+ * Called when the first item of advanced menu is entered.
+ */
 static void enter_menu() {
     current_infopage_item = 0;
 };
 
+/*
+ * This function clears additional menu page state.
+ * Called when the last item of advanced menu is leaved.
+ */
 static void exit_menu() {
     current_infopage_item = -1;
     *g_current_page = PAGE_INFORMATION;
 }
 
 /*
- * Menu creating functiom
+ * Menu creating function
  *
  */
-static void create_and_write_menu(int menu_item) {
+static void create_and_write_menu(int menu_item, uint8_t draw_slow_script_now) {
     char tempbuf[1024];
+    static const char slow_script_text[] = "#  _/_\\_ WAIT _/_\\_";
 
-    switch (menu_item) {
-        case 0:
-            create_menu_item(current_menu_buf, network_mode_mapping, menu_state.radio_mode);
-            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Network Mode:", current_menu_buf);
-            break;
-        case 1:
-            create_menu_item(current_menu_buf, imei_change_mapping, menu_state.imei_change);
-            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# IMEI (req. reboot):", current_menu_buf);
-            break;
-        case 2:
-            create_menu_item(current_menu_buf, ttlfix_mapping, menu_state.ttlfix);
-            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# TTL (req. reboot):", current_menu_buf);
-            break;
-        case 3:
-            create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.anticensorship);
-            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Anticensorship:", current_menu_buf);
-            break;
-        case 4:
-            create_menu_item(current_menu_buf, dnscrypt_mapping, menu_state.dnscrypt);
-            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# DNSCrypt:", current_menu_buf);
-            break;
-        case 5:
-            create_menu_item(current_menu_buf, remote_access_mapping, menu_state.remote_access);
-            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Remote Access:", current_menu_buf);
-            break;
-        case 6:
-            create_menu_item(current_menu_buf, usb_mode_mapping, menu_state.usb_mode);
-            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# USB Mode:", current_menu_buf);
-            break;
-        case 7:
-            create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.wifi_ext);
-            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Wi-Fi Extender:", current_menu_buf);
-            break;
-        case 8:
-            create_menu_item(current_menu_buf, enabled_disabled_mapping, menu_state.custom);
-            snprintf(tempbuf, 1024 - 1, "%s\n%s", "# Custom Script:", current_menu_buf);
-            break;
-    }
+    create_menu_item(current_menu_buf, sizeof(current_menu_buf),
+                     scripts[menu_item].mapping, scripts[menu_item].state);
+    snprintf(tempbuf, sizeof(tempbuf), "%s\n%s",
+             (draw_slow_script_now ? slow_script_text : scripts[menu_item].title),
+             current_menu_buf);
+
     fprintf(stderr, "CREATING MENU!!!!!\n");
-    strncpy(current_menu_buf, tempbuf, 1024 - 1);
+    strncpy(current_menu_buf, tempbuf, sizeof(current_menu_buf));
+    current_menu_buf[sizeof(current_menu_buf)-1] = '\0';
 }
 
+static void draw_wait_screen(int menu_item) {
+    continue_menu();
+    create_and_write_menu(menu_item, 1);
+    notify_handler_async_real(SUBSYSTEM_GPIO, BUTTON_MENU, 0);
+}
+
+/* 
+ * The main hijacked handler function.
+ */
 static int notify_handler_async(int subsystemid, int action, int subaction) {
-    int i;
-    static FILE *fp;
+    FILE *fp;
 
     if (!start_data) {
         fp = fopen("/proc/self/stat", "r");
         if (fp) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat"
+            // Read own memory map to adjust segment offsets on the first run.
             fscanf(fp, "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld"
             /*           1  2  3  4  5  6  7  8  9  10  11  12  13  14  15  16  17  18  19  20 */
                        "%ld %llu %lu %ld %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu"
@@ -446,6 +395,7 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
                    &dummy, &dummy, &dummy, &dummy, &dummy, &startcode, &dummy, &dummy, &dummy, &dummy, // 30
                    &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy,     // 40
                    &dummy, &dummy, &dummy, &dummy, &start_data, &end_data);
+#pragma GCC diagnostic pop
 
             // start_data is not really a start of DATA segment, but an end of previous segment.
             // There are other segments before data. We need to skip them.
@@ -473,12 +423,10 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
     // store pointer to current_menu_buf there.
     *(g_main_domain) = (uint32_t)&current_menu_buf;
 
+    // Set scripts count and check if Custom Script exists.
     if (!scripts_count) {
-        for (i = 0; scripts[i] != NULL; i++) {
-            scripts_count++;
-        }
+        scripts_count = sizeof(scripts) / sizeof(struct script_s);
         if (access(OLED_CUSTOM, F_OK) != 0) {
-            scripts[i-1] = NULL;
             scripts_count--;
         }
     }
@@ -499,6 +447,9 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
         current_infopage_item = -1;
     }
 
+    /*
+     * Main button handler
+     */
     if (*g_current_page == PAGE_INFORMATION || *g_current_page == page_before_information) {
         fprintf(stderr, "PAGE_INFORMATION\n");
         if (subsystemid == SUBSYSTEM_GPIO && *g_led_status == LED_ON) {
@@ -509,33 +460,39 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
                 return 0;
             }
             if (action == BUTTON_POWER && current_infopage_item != -1) {
-                // button pressed
+                // BUTTON_POWER (LEFT button) pressed.
                 fprintf(stderr, "BUTTON PRESSED!\n");
                 // lock buttons to prevent user intervention
                 LOCKBUTTONS(1);
+                if (scripts[current_infopage_item].slow_script)
+                    draw_wait_screen(current_infopage_item);
                 handle_menu_state_change(current_infopage_item);
-                update_menu_state();
-                create_and_write_menu(current_infopage_item);
+                update_menu_state(current_infopage_item);
+                create_and_write_menu(current_infopage_item, 0);
                 LOCKBUTTONS(0);
                 continue_menu();
                 return notify_handler_async_real(subsystemid, BUTTON_MENU, subaction);
             }
             else if (action == BUTTON_MENU) {
+                // BUTTON_MENU (RIGHT button) pressed.
                 LOCKBUTTONS(1);
                 if (*g_current_page == page_before_information) {
-                    // enter advanced menu if we're on an IP address page and pressed BUTTON_MENU
+                    // Enter advanced menu if we're on an wifi info page and pressed BUTTON_MENU.
+                    // Internally we're switching to IP address information page
                     enter_menu();
-                    update_menu_state();
-                    create_and_write_menu(current_infopage_item);
+                    update_menu_state(current_infopage_item);
+                    create_and_write_menu(current_infopage_item, 0);
                     LOCKBUTTONS(0);
                     return notify_handler_async_real(subsystemid, action, subaction);
                 }
                 current_infopage_item++;
-                fprintf(stderr, "CURRENT INFOPAGE ITEM = %d, SCRIPTS COUNT = %d\n", current_infopage_item, scripts_count);
+                fprintf(stderr, "CURRENT INFOPAGE ITEM = %d, SCRIPTS COUNT = %d\n",
+                        current_infopage_item, scripts_count);
                 if (current_infopage_item < scripts_count) {
                     fprintf(stderr, "GOING BACK AND RE-ENTERING MENU!\n");
                     continue_menu();
-                    create_and_write_menu(current_infopage_item);
+                    update_menu_state(current_infopage_item);
+                    create_and_write_menu(current_infopage_item, 0);
                 }
                 else {
                     exit_menu();

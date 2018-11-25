@@ -23,9 +23,6 @@
 #define BUTTON_MENU 9
 #define LED_ON 0
 
-#define OLED_CUSTOM "/online/oled_custom.sh"
-#define SCRIPT_PATH "/app/bin/oled_hijack"
-
 /* 
  * Variables from "oled" binary.
  * 
@@ -63,20 +60,6 @@ static int (*notify_handler_async_real)(int subsystemid, int action, int subacti
 /* 
  * Menu-related configuration
  */
-
-static const char *scripts[] = {
-    SCRIPT_PATH "/radio_mode.sh",
-    SCRIPT_PATH "/imei_change.sh",
-    SCRIPT_PATH "/ttlfix.sh",
-    SCRIPT_PATH "/anticensorship.sh",
-    SCRIPT_PATH "/adblock.sh",
-    SCRIPT_PATH "/remote_access.sh",
-    SCRIPT_PATH "/no_battery.sh",
-    SCRIPT_PATH "/usb_mode.sh",
-    SCRIPT_PATH "/wifi.sh",
-    OLED_CUSTOM,
-    NULL
-};
 
 static const char *network_mode_mapping[] = {
     // 0
@@ -148,18 +131,33 @@ static const char *enabled_disabled_mapping[] = {
     NULL
 };
 
-struct menu_s {
-    uint8_t radio_mode;
-    uint8_t imei_change;
-    uint8_t ttlfix;
-    uint8_t anticensorship;
-    uint8_t adblock;
-    uint8_t remote_access;
-    uint8_t no_battery;
-    uint8_t usb_mode;
-    uint8_t wifi;
-    uint8_t custom;
-} menu_state;
+#define OLED_CUSTOM "/online/oled_custom.sh"
+#define SCRIPT_PATH "/app/bin/oled_hijack"
+
+struct script_s {
+    const char *title;
+    const char *path;
+    const char **mapping;
+    uint8_t slow_script; // no support for slow_script yet for 128x128 version
+    int state;
+};
+
+static struct script_s scripts[] = {
+    {"# Network Mode:", SCRIPT_PATH "/radio_mode.sh", network_mode_mapping, 1, 0},
+    {"# IMEI (req. reboot):", SCRIPT_PATH "/imei_change.sh", imei_change_mapping, 1, 0},
+    {"# TTL (req. reboot):", SCRIPT_PATH "/ttlfix.sh", ttlfix_mapping, 0, 0},
+    {"# Anticensorship:", SCRIPT_PATH "/anticensorship.sh", enabled_disabled_mapping, 0, 0},
+    {"# Adblock:", SCRIPT_PATH "/adblock.sh", enabled_disabled_mapping, 1, 0},
+    {"# Remote Access:", SCRIPT_PATH "/remote_access.sh", remote_access_mapping, 0, 0},
+    {"# Work w/o Battery:", SCRIPT_PATH "/no_battery.sh", enabled_disabled_mapping, 0, 0},
+    {"# USB Mode:", SCRIPT_PATH "/usb_mode.sh", usb_mode_mapping, 0, 0},
+    //{"# Wi-Fi (w/reboot):", SCRIPT_PATH "/wifi.sh", enabled_disabled_mapping, 1, 0},
+    /* Is it assumed that Custom Script is always the latest item, don't remove it. */
+    {"# Custom Script:", OLED_CUSTOM, enabled_disabled_mapping, 1, 0}
+};
+
+// Number of scripts in the array above. Filled in runtime.
+static int scripts_count = 0;
 
 /* *************************************** */
 
@@ -192,47 +190,14 @@ static int call_script(char const *script, char const *additional_argument) {
 }
 
 /*
- * Call every script in scripts array and update
- * menu_state struct.
+ * Call selected script in scripts array and update its state.
  * Called in sprintf.
  */
 static void update_menu_state() {
-    int i, ret;
+    int menu_page = 0;
 
-    for (i = 0; scripts[i] != NULL; i++) {
-        ret = call_script(scripts[i], "get");
-        switch (i) {
-            case 0:
-                menu_state.radio_mode = ret;
-                break;
-            case 1:
-                menu_state.imei_change = ret;
-                break;
-            case 2:
-                menu_state.ttlfix = ret;
-                break;
-            case 3:
-                menu_state.anticensorship = ret;
-                break;
-            case 4:
-                menu_state.adblock = ret;
-                break;
-            case 5:
-                menu_state.remote_access = ret;
-                break;
-            case 6:
-                menu_state.no_battery = ret;
-                break;
-            case 7:
-                menu_state.usb_mode = ret;
-                break;
-            case 8:
-                menu_state.wifi = ret;
-                break;
-            case 9:
-                menu_state.custom = ret;
-                break;
-        }
+    for (menu_page = 0; menu_page < scripts_count; menu_page++) {
+        scripts[menu_page].state = call_script(scripts[menu_page].path, "get");
     }
 }
 
@@ -242,16 +207,17 @@ static void update_menu_state() {
  * Called when the POWER button is pressed on hijacked page.
  */
 static void handle_menu_state_change(int menu_page) {
-    call_script(scripts[menu_page], "set_next");
+    call_script(scripts[menu_page].path, "set_next");
 }
 
 /*
  * Create menu of 3 items.
  * Only for E5372 display.
  */
-static void create_menu_item(char *buf, const char *mapping[], int current_item) {
+static void create_menu_item(char *buf, size_t bufsize, const char *mapping[],
+                             int current_item) {
     int i, char_list_size = 0;
-    char nothing[2] = "";
+    static const char nothing[] = "";
 
     for (i = 0; mapping[i] != NULL; i++) {
         char_list_size++;
@@ -260,7 +226,7 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
     fprintf(stderr, "Trying to create menu\n");
 
     if (current_item == 0) {
-        snprintf(buf, 1024 - 1,
+        snprintf(buf, bufsize,
              "  > %s\n    %s\n    %s\n",
              (mapping[current_item]),
              ((char_list_size >= 2) ? mapping[current_item + 1] : nothing),
@@ -268,7 +234,7 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
         );
     }
     else if (current_item == char_list_size - 1 && char_list_size >= 3) {
-        snprintf(buf, 1024 - 1,
+        snprintf(buf, bufsize,
              "    %s\n    %s\n  > %s\n",
              ((current_item >= 2 && char_list_size > 2) ? mapping[current_item - 2] : nothing),
              ((current_item >= 1 && char_list_size > 1) ? mapping[current_item - 1] : nothing),
@@ -276,7 +242,7 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
         );
     }
     else if (current_item <= char_list_size) {
-        snprintf(buf, 1024 - 1,
+        snprintf(buf, bufsize,
             "    %s\n  > %s\n    %s\n",
             ((current_item > 0) ? mapping[current_item - 1] : nothing),
             (mapping[current_item]),
@@ -285,7 +251,7 @@ static void create_menu_item(char *buf, const char *mapping[], int current_item)
         );
     }
     else {
-        snprintf(buf, 1024 - 1,
+        snprintf(buf, bufsize,
             "    ERROR\n\n\n");
     }
 }
@@ -336,7 +302,7 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
         // change from the menu.
         return 0;
     }
-    
+
     if (*g_current_page == PAGE_INFORMATION) {
         if (first_info_screen && first_info_screen != *g_current_Info_page) {
             if (subsystemid == SUBSYSTEM_GPIO && *g_led_status == LED_ON) {
@@ -369,6 +335,23 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
     return notify_handler_async_real(subsystemid, action, subaction);
 }
 
+
+static void create_and_write_menu(char *outbuf, size_t outbuf_size) {
+    char tempbuf[1024] = {0};
+    char finalbuf[1024] = {0};
+    int menu_item = 0;
+
+    for (menu_item = 0; menu_item < scripts_count; menu_item++) {
+        create_menu_item(tempbuf,
+                         sizeof(tempbuf),
+                         scripts[menu_item].mapping,
+                         scripts[menu_item].state);
+        snprintf(finalbuf, sizeof(finalbuf), "%s%s\n%s", finalbuf,
+                 scripts[menu_item].title, tempbuf);
+    }
+    snprintf(outbuf, outbuf_size, "%s", finalbuf);
+}
+
 /*
  * Hijacked functions from various libraries.
  */
@@ -384,18 +367,7 @@ int register_notify_handler(int subsystemid, void *notify_handler_sync, void *no
 
 int sprintf(char *str, const char *format, ...) {
     int i = 0, j = 0;
-    char network_mode_buf[1024];
-    char imei_change_buf[1024];
-    char ttlfix_buf[1024];
-    char anticensorship_buf[1024];
-    char adblock_buf[1024];
-    char remote_access_buf[1024];
-    char no_battery_buf[1024];
-    char usb_mode_buf[1024];
-    char wifi_buf[1024];
-    static char custom_buf[1024];
-    static char custom_text_buf[] = "# Custom Script:\n";
-
+    
     va_list args;
     va_start(args, format);
     i = vsprintf(str, format, args);
@@ -417,58 +389,16 @@ int sprintf(char *str, const char *format, ...) {
 
     // Hijacking "Homepage: %s" string on second information page
     if (format && strcmp(format, "Homepage: %s") == 0) {
+        
+        if (!scripts_count) {
+            scripts_count = sizeof(scripts) / sizeof(struct script_s);
+            if (access(OLED_CUSTOM, F_OK) != 0) {
+                scripts_count--;
+            }
+        }
         fprintf(stderr, "FOUND STRING!\n");
         update_menu_state();
-        create_menu_item(network_mode_buf, network_mode_mapping, menu_state.radio_mode);
-        create_menu_item(imei_change_buf, imei_change_mapping, menu_state.imei_change);
-        create_menu_item(ttlfix_buf, ttlfix_mapping, menu_state.ttlfix);
-        create_menu_item(anticensorship_buf, enabled_disabled_mapping, menu_state.anticensorship);
-        create_menu_item(adblock_buf, enabled_disabled_mapping, menu_state.adblock);
-        create_menu_item(remote_access_buf, remote_access_mapping, menu_state.remote_access);
-        create_menu_item(no_battery_buf, enabled_disabled_mapping, menu_state.no_battery);
-        create_menu_item(usb_mode_buf, usb_mode_mapping, menu_state.usb_mode);
-        create_menu_item(wifi_buf, enabled_disabled_mapping, menu_state.wifi);
-
-        if (custom_script_enabled == -1) {
-            if (access(OLED_CUSTOM, F_OK) == 0) {
-                custom_script_enabled = 1;
-            }
-            else {
-                // Disable custom script support
-                custom_script_enabled = 0;
-                custom_buf[0] = '\0';
-                custom_text_buf[0] = '\0';
-                for (j = 0; scripts[j] != NULL; j++) {}
-                scripts[j-1] = NULL;
-            }
-        }
-
-        if (custom_script_enabled) {
-            create_menu_item(custom_buf, enabled_disabled_mapping, menu_state.custom);
-        }
-
-        snprintf(str, 999,
-                 "# Network Mode:\n%s" \
-                 "# IMEI (req. reboot):\n%s" \
-                 "# TTL (req. reboot):\n%s" \
-                 "# Anticensorship:\n%s" \
-                 "# Adblock:\n%s" \
-                 "# Remote Access:\n%s" \
-                 "# Work w/o Battery:\n%s" \
-                 "# USB Mode:\n%s",
-                 "# Wi-Fi (w/reboot):\n%s%s%s" \
-                 network_mode_buf,
-                 ttlfix_buf,
-                 anticensorship_buf,
-                 adblock_buf,
-                 imei_change_buf,
-                 remote_access_buf,
-                 no_battery_buf,
-                 usb_mode_buf,
-                 wifi_buf,
-                 custom_text_buf,
-                 custom_buf
-        );
+        create_and_write_menu(str, 999);
         //fprintf(stderr, "%s\n",);
     }
     fprintf(stderr, "sprintf %s\n", format);

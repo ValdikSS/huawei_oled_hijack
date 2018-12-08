@@ -87,6 +87,16 @@ static const char *ttlfix_mapping[] = {
     NULL
 };
 
+static const char *dns_over_tls_mapping[] = {
+    // 0
+    "Disabled",
+    // 1
+    "Enabled",
+    // 2
+    "Enabled + adblock",
+    NULL
+};
+
 static const char *imei_change_mapping[] = {
     // 0
     "Stock",
@@ -147,7 +157,7 @@ static struct script_s scripts[] = {
     {"# IMEI (req. reboot):", SCRIPT_PATH "/imei_change.sh", imei_change_mapping, 1, 0},
     {"# TTL (req. reboot):", SCRIPT_PATH "/ttlfix.sh", ttlfix_mapping, 0, 0},
     {"# Anticensorship:", SCRIPT_PATH "/anticensorship.sh", enabled_disabled_mapping, 0, 0},
-    {"# Adblock:", SCRIPT_PATH "/adblock.sh", enabled_disabled_mapping, 1, 0},
+    {"# DNS over TLS:", SCRIPT_PATH "/dns_over_tls.sh", dns_over_tls_mapping, 1, 0},
     {"# Remote Access:", SCRIPT_PATH "/remote_access.sh", remote_access_mapping, 0, 0},
     {"# Work w/o Battery:", SCRIPT_PATH "/no_battery.sh", enabled_disabled_mapping, 0, 0},
     {"# USB Mode:", SCRIPT_PATH "/usb_mode.sh", usb_mode_mapping, 0, 0},

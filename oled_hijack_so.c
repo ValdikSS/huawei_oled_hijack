@@ -168,6 +168,13 @@ static struct script_s scripts[] = {
 
 // Number of scripts in the array above. Filled in runtime.
 static int scripts_count = 0;
+#ifdef MENU_UNLOCK
+// Advanced menu unlock flag.
+// The user should press POWER button 7 times on information page
+// to activate the menu.
+static int menu_unlocked = 0;
+#define UNLOCK_COUNT 7
+#endif
 
 /* *************************************** */
 
@@ -314,6 +321,27 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
     }
 
     if (*g_current_page == PAGE_INFORMATION) {
+#ifdef MENU_UNLOCK
+        if (first_info_screen && first_info_screen == *g_current_Info_page) {
+            if (subsystemid == SUBSYSTEM_GPIO &&
+                *g_led_status == LED_ON &&
+                menu_unlocked != UNLOCK_COUNT)
+            {
+                if (action == BUTTON_POWER) {
+                    // POWER button pressed on information page,
+                    // increasing menu_unlocked
+                    menu_unlocked++;
+                    if (menu_unlocked == UNLOCK_COUNT) {
+                        leave_and_enter_menu(0);
+                        return 0;
+                    }
+                }
+                else if (action == BUTTON_MENU)
+                    menu_unlocked = 0;
+            }
+        }
+#endif
+
         if (first_info_screen && first_info_screen != *g_current_Info_page) {
             if (subsystemid == SUBSYSTEM_GPIO && *g_led_status == LED_ON) {
                 fprintf(stderr, "We're not on a main info screen!\n");
@@ -399,7 +427,6 @@ int sprintf(char *str, const char *format, ...) {
 
     // Hijacking "Homepage: %s" string on second information page
     if (format && strcmp(format, "Homepage: %s") == 0) {
-        
         if (!scripts_count) {
             scripts_count = sizeof(scripts) / sizeof(struct script_s);
             if (access(OLED_CUSTOM, F_OK) != 0) {
@@ -410,6 +437,12 @@ int sprintf(char *str, const char *format, ...) {
         update_menu_state();
         create_and_write_menu(str, 999);
         //fprintf(stderr, "%s\n",);
+#ifdef MENU_UNLOCK
+        if (menu_unlocked != UNLOCK_COUNT) {
+            // if menu is not yet unlocked
+            strcpy(str, "");
+        }
+#endif
     }
     fprintf(stderr, "sprintf %s\n", format);
     return i;

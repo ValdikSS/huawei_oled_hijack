@@ -416,7 +416,8 @@ int sprintf(char *str, const char *format, ...) {
         strcmp(format, "PWD: %s\n") == 0 ||
         strncmp(str, "PWD0: ", 6) == 0)) {
             va_start(args, format);
-            i = vsnprintf(str, 20, format, args);
+            i = vsnprintf(str, 19, format, args);
+            str[18] = ' ';
             str[19] = '\0';
             va_end(args);
     }

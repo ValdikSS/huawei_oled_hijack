@@ -19,7 +19,10 @@
 #define SUBSYSTEM_GPIO 21002
 #define EVT_OLED_WIFI_WAKEUP 14026
 #define EVT_DIALUP_REPORT_CONNECT_STATE 4037
+#define EVT_OLED_WIFI_STA_CHANGE 14010
 #define DIAL_STATE_CONNECTING 900
+#define DIAL_STATE_CONNECTED 901
+#define DIAL_STATE_DISCONNECTED 902
 #define BUTTON_POWER 8
 #define BUTTON_MENU 9
 #define LED_ON 0
@@ -145,6 +148,8 @@ static const char *enabled_disabled_mapping[] = {
 
 #define OLED_CUSTOM "/online/oled_custom.sh"
 #define SCRIPT_PATH "/app/bin/oled_hijack"
+#define NET_DOWN_SCRIPT SCRIPT_PATH "/net.down"
+#define NET_UP_SCRIPT   SCRIPT_PATH "/net.up"
 
 struct script_s {
     const char *title;
@@ -320,6 +325,18 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
         // We do not want to draw animations in the middle of network
         // change from the menu.
         return 0;
+    }
+
+    else if (subsystemid == EVT_OLED_WIFI_STA_CHANGE ||
+        subsystemid == EVT_DIALUP_REPORT_CONNECT_STATE)
+    {
+        // Call net.up/net.down scripts when network state
+        // changes or when mobile network switches to Wi-Fi repeater
+        // or vice versa.
+        if (action == DIAL_STATE_DISCONNECTED)
+            call_script(NET_DOWN_SCRIPT, NULL);
+        else if (action == DIAL_STATE_CONNECTED)
+            call_script(NET_UP_SCRIPT, NULL);
     }
 
     if (*g_current_page == PAGE_INFORMATION) {

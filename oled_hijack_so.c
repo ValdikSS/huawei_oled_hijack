@@ -173,7 +173,7 @@ static int scripts_count = 0;
 // The user should press POWER button 7 times on information page
 // to activate the menu.
 static int menu_unlocked = 0;
-#define UNLOCK_COUNT 7
+#define UNLOCK_PRESS_COUNT 7
 #endif
 
 /* *************************************** */
@@ -325,13 +325,13 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
         if (first_info_screen && first_info_screen == *g_current_Info_page) {
             if (subsystemid == SUBSYSTEM_GPIO &&
                 *g_led_status == LED_ON &&
-                menu_unlocked != UNLOCK_COUNT)
+                menu_unlocked != UNLOCK_PRESS_COUNT)
             {
                 if (action == BUTTON_POWER) {
                     // POWER button pressed on information page,
                     // increasing menu_unlocked
                     menu_unlocked++;
-                    if (menu_unlocked == UNLOCK_COUNT) {
+                    if (menu_unlocked == UNLOCK_PRESS_COUNT) {
                         leave_and_enter_menu(0);
                         return 0;
                     }
@@ -435,15 +435,16 @@ int sprintf(char *str, const char *format, ...) {
             }
         }
         fprintf(stderr, "FOUND STRING!\n");
+#ifdef MENU_UNLOCK
+        if (menu_unlocked != UNLOCK_PRESS_COUNT) {
+            // Do nothing if menu is not yet unlocked.
+            strcpy(str, "");
+            return 0;
+        }
+#endif
         update_menu_state();
         create_and_write_menu(str, 999);
         //fprintf(stderr, "%s\n",);
-#ifdef MENU_UNLOCK
-        if (menu_unlocked != UNLOCK_COUNT) {
-            // if menu is not yet unlocked
-            strcpy(str, "");
-        }
-#endif
     }
     fprintf(stderr, "sprintf %s\n", format);
     return i;

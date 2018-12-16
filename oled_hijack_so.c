@@ -2,7 +2,8 @@
  * Advanced OLED menu for Huawei E5372 portable LTE router.
  * 
  * Compile:
- * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -s -D__ANDROID_API__=9 -o oled_hijack.so oled_hijack_so.c
+ * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -s \
+ * -D__ANDROID_API__=9 -DMENU_UNLOCK -o oled_hijack.so oled_hijack_so.c
  */
 
 #define _GNU_SOURCE
@@ -29,11 +30,12 @@
  * g_current_page is a current menu page. -1 for main screen, 0 for main
  * menu screen, 1 for information page.
  * 
- * g_current_Info_page is a pointer to current visible page in the
+ * g_current_Info_page is a pointer to current visible page on the
  * information screen.
  * 
- * Current values are based on E5372 oled binary.
- * MD5: eb4e65509e16c2023f4f9a5e00cd0785
+ * Current values are based on E5372 21.290.23.00.00 oled binary.
+ * MD5:  eb4e65509e16c2023f4f9a5e00cd0785
+ * SHA1: a68f381df9cbeccd242e16fc790f92741f3e049e
  * 
  */
 static uint32_t volatile *g_current_page = (uint32_t volatile *)(0x00029f94);
@@ -43,8 +45,8 @@ static uint32_t volatile *g_led_status = (uint32_t volatile *)(0x00029FA8);
 static uint32_t first_info_screen = 0;
 
 // Do not send BUTTON_PRESSED event notify to "oled" if set.
-// something like a mutex, but we don't really care about
-// thread-safe as we only care of atomic writes which are
+// Something like a mutex, but we don't really care about
+// thread-safety as we only care of atomic writes which are
 // in the same thread.
 static int lock_buttons = 0;
 
@@ -207,7 +209,7 @@ static int call_script(char const *script, char const *additional_argument) {
 }
 
 /*
- * Call selected script in scripts array and update its state.
+ * Call all scripts in scripts array and update their state.
  * Called in sprintf.
  */
 static void update_menu_state() {
@@ -229,7 +231,7 @@ static void handle_menu_state_change(int menu_page) {
 
 /*
  * Create menu of 3 items.
- * Only for E5372 display.
+ * Only for 128x128 displays.
  */
 static void create_menu_item(char *buf, size_t bufsize, const char *mapping[],
                              int current_item) {
@@ -405,29 +407,35 @@ int register_notify_handler(int subsystemid, void *notify_handler_sync, void *no
 
 int sprintf(char *str, const char *format, ...) {
     int i = 0, j = 0;
-    
+
     va_list args;
     va_start(args, format);
     i = vsprintf(str, format, args);
     va_end(args);
-    
+
     if (format && (strcmp(format, "SSID: %s\n") == 0 ||
         strncmp(str, "SSID0: ", 7) == 0 ||
         strcmp(format, "PWD: %s\n") == 0 ||
-        strncmp(str, "PWD0: ", 6) == 0)) {
-            va_start(args, format);
-            i = vsnprintf(str, 19, format, args);
-            str[18] = ' ';
-            str[19] = '\0';
-            va_end(args);
+        strncmp(str, "PWD0: ", 6) == 0))
+    {
+        // Cut SSID or password to prevent line break
+        va_start(args, format);
+        i = vsnprintf(str, 19, format, args);
+        str[18] = ' ';
+        str[19] = '\0';
+        va_end(args);
     }
     else if (format && (strncmp(str, "SSID1: ", 7) == 0 ||
-        strncmp(str, "PWD1: ", 6) == 0)) {
-            i = snprintf(str, 2, "");
+        strncmp(str, "PWD1: ", 6) == 0))
+    {
+        // Remove multi-ssid information to keep everything
+        // on a single screen.
+        i = snprintf(str, 2, "");
     }
 
     // Hijacking "Homepage: %s" string on second information page
     if (format && strcmp(format, "Homepage: %s") == 0) {
+        // Update scripts_count variable if it's zero.
         if (!scripts_count) {
             scripts_count = sizeof(scripts) / sizeof(struct script_s);
             if (access(OLED_CUSTOM, F_OK) != 0) {
@@ -452,6 +460,7 @@ int sprintf(char *str, const char *format, ...) {
 
 int osa_print_log_ex(char *subsystem, char *sourcefile, int line,
                      int offset, const char *message, ...) {
+    // Uncomment to watch debug prints from oled binary.
     /*va_list args;
     va_start(args, message);
     fprintf(stderr, "[%s] %s (%d): ", subsystem, sourcefile, line);

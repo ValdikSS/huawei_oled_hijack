@@ -3,7 +3,15 @@
  * 
  * Compile:
  * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -s \
- * -D__ANDROID_API__=9 -DMENU_UNLOCK -o oled_hijack.so oled_hijack_so.c
+ * -D__ANDROID_API__=9 -DMENU_UNLOCK -DNET_UPDOWN -o oled_hijack.so oled_hijack_so.c
+ *
+ * -DMENU_UNLOCK enables unlocking feature: advanced menu is hidden
+ * by default and information page works like a stock one. The menu
+ * can be activated by pressing POWER button 7 times on information
+ * page.
+ *
+ * -DNET_UPDOWN calls net.down/net.up scripts on network
+ * reconfiguration.
  */
 
 #define _GNU_SOURCE
@@ -148,8 +156,10 @@ static const char *enabled_disabled_mapping[] = {
 
 #define OLED_CUSTOM "/online/oled_custom.sh"
 #define SCRIPT_PATH "/app/bin/oled_hijack"
+#ifdef NET_UPDOWN
 #define NET_DOWN_SCRIPT SCRIPT_PATH "/net.down"
 #define NET_UP_SCRIPT   SCRIPT_PATH "/net.up"
+#endif
 
 struct script_s {
     const char *title;
@@ -327,6 +337,7 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
         return 0;
     }
 
+#ifdef NET_UPDOWN
     else if (subsystemid == EVT_OLED_WIFI_STA_CHANGE ||
         subsystemid == EVT_DIALUP_REPORT_CONNECT_STATE)
     {
@@ -338,6 +349,7 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
         else if (action == DIAL_STATE_CONNECTED)
             call_script(NET_UP_SCRIPT, NULL);
     }
+#endif
 
     if (*g_current_page == PAGE_INFORMATION) {
 #ifdef MENU_UNLOCK

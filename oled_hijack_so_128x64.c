@@ -8,6 +8,11 @@
  * Compile for E5885:
  * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -DE5885 \
  * -D__ANDROID_API__=19 -s -o oled_hijack.so oled_hijack_so_128x64.c
+ *
+ * -DMENU_UNLOCK enables unlocking feature: advanced menu is hidden
+ * by default and information page works like a stock one. The menu
+ * can be activated by pressing LEFT button 7 times on information
+ * page.
  */
 
 #define _GNU_SOURCE
@@ -226,6 +231,13 @@ static struct script_s scripts[] = {
 
 // Number of scripts in the array above. Filled in runtime.
 static int scripts_count = 0;
+#ifdef MENU_UNLOCK
+// Advanced menu unlock flag.
+// The user should press LEFT (WPS) button 7 times on information page
+// to activate the menu.
+static int menu_unlocked = 0;
+#define UNLOCK_COUNT 7
+#endif
 
 /* *************************************** */
 
@@ -459,6 +471,19 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
                 // if buttons are locked by slow script
                 return 0;
             }
+#ifdef MENU_UNLOCK
+            if (current_infopage_item == -1 && menu_unlocked != UNLOCK_COUNT) {
+                if (action == BUTTON_POWER)
+                    menu_unlocked++;
+                else if (action == BUTTON_MENU) {
+                    menu_unlocked = 0;
+                    if (*g_current_page == page_before_information) {
+                        exit_menu();
+                        return notify_handler_async_real(subsystemid, action, subaction);
+                    }
+                }
+            }
+#endif
             if (action == BUTTON_POWER && current_infopage_item != -1) {
                 // BUTTON_POWER (LEFT button) pressed.
                 fprintf(stderr, "BUTTON PRESSED!\n");

@@ -290,7 +290,7 @@ static void handle_menu_state_change(int menu_page) {
 }
 
 /*
- * Create menu of 3 items.
+ * Create menu of 2 items, for 128x64 displays.
  */
 static void create_menu_item(char *buf, size_t bufsize, const char *mapping[],
                              int current_item) {

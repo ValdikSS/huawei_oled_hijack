@@ -3,16 +3,21 @@
  * 
  * Compile for E5770:
  * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -DE5770 \
- * -D__ANDROID_API__=19 -s -o oled_hijack.so oled_hijack_so_128x64.c
+ * -D__ANDROID_API__=19 -DMENU_UNLOCK -DNET_UPDOWN -s \
+ * -o oled_hijack.so oled_hijack_so_128x64.c
  *
  * Compile for E5885:
  * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -DE5885 \
- * -D__ANDROID_API__=19 -s -o oled_hijack.so oled_hijack_so_128x64.c
+ * -D__ANDROID_API__=19 -DMENU_UNLOCK -DNET_UPDOWN -s \
+ * -o oled_hijack.so oled_hijack_so_128x64.c
  *
  * -DMENU_UNLOCK enables unlocking feature: advanced menu is hidden
  * by default and information page works like a stock one. The menu
  * can be activated by pressing LEFT button 7 times on information
  * page.
+ *
+ * -DNET_UPDOWN calls net.down/net.up scripts on network
+ * reconfiguration.
  */
 
 #define _GNU_SOURCE
@@ -31,7 +36,10 @@
 #define SUBSYSTEM_GPIO 21002
 #define EVT_OLED_WIFI_WAKEUP 14026
 #define EVT_DIALUP_REPORT_CONNECT_STATE 4037
+#define EVT_OLED_WIFI_STA_CHANGE 14010
 #define DIAL_STATE_CONNECTING 900
+#define DIAL_STATE_CONNECTED 901
+#define DIAL_STATE_DISCONNECTED 902
 #define BUTTON_POWER 9
 #define BUTTON_MENU 8
 #define LED_ON 0
@@ -207,6 +215,10 @@ static const char *enabled_disabled_mapping[] = {
 
 #define OLED_CUSTOM "/online/oled_custom.sh"
 #define SCRIPT_PATH "/app/bin/oled_hijack"
+#ifdef NET_UPDOWN
+#define NET_DOWN_SCRIPT SCRIPT_PATH "/net.down"
+#define NET_UP_SCRIPT   SCRIPT_PATH "/net.up"
+#endif
 
 struct script_s {
     const char *title;
@@ -452,7 +464,19 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
         // if Wi-Fi is completely disabled in web interface.
         return 0;
     }
-
+#ifdef NET_UPDOWN
+    else if (subsystemid == EVT_OLED_WIFI_STA_CHANGE ||
+        subsystemid == EVT_DIALUP_REPORT_CONNECT_STATE)
+    {
+        // Call net.up/net.down scripts when network state
+        // changes or when mobile network switches to Wi-Fi repeater
+        // or vice versa.
+        if (action == DIAL_STATE_DISCONNECTED)
+            call_script(NET_DOWN_SCRIPT, NULL);
+        else if (action == DIAL_STATE_CONNECTED)
+            call_script(NET_UP_SCRIPT, NULL);
+    }
+#endif
     if (*g_current_page == PAGE_BEFORE_INFORMATION + 1) {
         // We have two Wi-Fi networks.
         page_before_information = PAGE_BEFORE_INFORMATION + 1;

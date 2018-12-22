@@ -206,7 +206,7 @@ void* webserver_register_hookfunction(int subsystemnum, const char *subsystemnam
         fprintf(stderr, "No global release, saving\n");
         global_release_msg_real = global_release_msg;
     }
-    
+
     fprintf(stderr, "Checking for webhook thread\n");
     if (!webhookthread) {
         fprintf(stderr, "No webhook thread, creating one\n");
@@ -245,7 +245,7 @@ int main(int argc, char* argv[]) {
     int fd;
     ssize_t rsize;
     char buf[BUFSIZE];
-    
+
     if (argc != 5) {
         puts("Need 4 arguments: <subsystemname> <funcname> <1 for get, 2 for post> <data>");
         exit(EXIT_FAILURE);

@@ -426,6 +426,7 @@ static void create_and_write_menu(char *outbuf, size_t outbuf_size) {
  */
 
 int register_notify_handler(int subsystemid, void *notify_handler_sync, void *notify_handler_async_orig) {
+    unsetenv("LD_PRELOAD");
     if (!register_notify_handler_real) {
         register_notify_handler_real = dlsym(RTLD_NEXT, "register_notify_handler");
     }

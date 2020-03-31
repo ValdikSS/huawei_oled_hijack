@@ -1,7 +1,11 @@
 /*
- * Advanced OLED menu for Huawei E5372 portable LTE router.
+ * Advanced OLED menu for Huawei E5372/E5577/E5377 128x128 LED screen portable LTE routers.
  * 
- * Compile:
+ * Compile for V7R11:
+ * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -s \
+ * -D__ANDROID_API__=19 -DMENU_UNLOCK -DNET_UPDOWN -o oled_hijack.so oled_hijack_so.c
+ * 
+ * For V7R1 and V7R2:
  * arm-linux-androideabi-gcc -shared -ldl -fPIC -O2 -s \
  * -D__ANDROID_API__=9 -DMENU_UNLOCK -DNET_UPDOWN -o oled_hijack.so oled_hijack_so.c
  *
@@ -12,6 +16,22 @@
  *
  * -DNET_UPDOWN calls net.down/net.up scripts on network
  * reconfiguration.
+ * 
+ * Use -DEVERY_SCREEN_STARTS_WITH_BACK on E5577/E5377, where
+ * each new menu screen begins with "BACK" element, and you should
+ * press twice to scroll the menu.
+ * 
+ * -DSTRINGS_WITHOUT_SPACE define is for case when informational page
+ * contains strings without additional space, e.g.:
+ * 
+ * SSID:yourssid
+ * PWD:yourpassword
+ * 
+ * and not
+ * 
+ * SSID: yourssid
+ * 
+ * etc. Used on E5577.
  */
 
 #define _GNU_SOURCE
@@ -22,6 +42,8 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <stdint.h>
+#include <string.h>
 
 #define PAGE_INFORMATION 1
 #define SUBSYSTEM_GPIO 21002
@@ -44,14 +66,39 @@
  * g_current_Info_page is a pointer to current visible page on the
  * information screen.
  * 
- * Current values are based on E5372 21.290.23.00.00 oled binary.
+ * Values for E5372 21.290.23.00.00 oled binary.
  * MD5:  eb4e65509e16c2023f4f9a5e00cd0785
  * SHA1: a68f381df9cbeccd242e16fc790f92741f3e049e
  * 
+ * Non-ASLR binary, do not use -DASLR
+ * Do not use -DEVERY_SCREEN_STARTS_WITH_BACK
+ * Do not use -DSTRINGS_WITHOUT_SPACE
  */
-static uint32_t volatile *g_current_page = (uint32_t volatile *)(0x00029f94);
-static uint32_t volatile *g_current_Info_page = (uint32_t volatile *)(0x0002CAB8);
-static uint32_t volatile *g_led_status = (uint32_t volatile *)(0x00029FA8);
+//static uint32_t volatile *g_current_page = (uint32_t volatile *)(0x00029f94);
+//static uint32_t volatile *g_current_Info_page = (uint32_t volatile *)(0x0002CAB8);
+//static uint32_t volatile *g_led_status = (uint32_t volatile *)(0x00029FA8);
+
+/* Values for E5577s 21.327.62.01.1365 oled binary.
+ * MD5:  eb4e65509e16c2023f4f9a5e00cd0785
+ * SHA1: a68f381df9cbeccd242e16fc790f92741f3e049e
+ * 
+ * ASLR binary, use -DASLR
+ * Also use -DSTRINGS_WITHOUT_SPACE and -DEVERY_SCREEN_STARTS_WITH_BACK
+ */
+//static uint32_t volatile *g_current_page = (uint32_t volatile *)(0x20f8); // data + 0x20f8
+//static uint32_t volatile *g_current_Info_page = (uint32_t volatile *)(0x3968); // bss + 0x3968
+//static uint32_t volatile *g_led_status = (uint32_t volatile *)(0x2114); // data + 0x2114
+
+/* Values for E5377s 21.316.17.00.00 oled binary.
+ * MD5:  cfb2cfa88941b955eee9c5b943107889
+ * SHA1: 23815bce9b04b400bb2673ca3279fb374333289e
+ * 
+ * Non-ASLR binary, do not use -DASLR
+ * Use -DEVERY_SCREEN_STARTS_WITH_BACK
+ */
+static uint32_t volatile *g_current_page = (uint32_t volatile *)(0x3A258);
+static uint32_t volatile *g_current_Info_page = (uint32_t volatile *)(0x413F8);
+static uint32_t volatile *g_led_status = (uint32_t volatile *)(0x3A27C);
 
 static uint32_t first_info_screen = 0;
 
@@ -63,6 +110,15 @@ static int lock_buttons = 0;
 
 static int current_infopage_item = 0;
 static int custom_script_enabled = -1;
+
+// Used only for -DASLR, but not ifdef'd for simplicity.
+static uint32_t startcode = 0; // start of TEXT segment
+// NOT REALLY A start of DATA segment
+// proc(5) is incorrect, read Documentation/filesystems/proc.txt!
+// https://stackoverflow.com/questions/29780731/wrong-entries-with-proc-pid-stat
+static uint32_t start_data = 0;
+static uint32_t end_data = 0; // end of DATA segment and start of BSS
+static char dummy[100];
 
 /*
  * Real handlers from oled binary and libraries
@@ -318,7 +374,50 @@ static void leave_and_enter_menu(int advance) {
 }
 
 static int notify_handler_async(int subsystemid, int action, int subaction) {
+
+#ifdef ASLR
+    FILE *fp;
+    if (!start_data) {
+        fp = fopen("/proc/self/stat", "r");
+        if (fp) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat"
+            // Read own memory map to adjust segment offsets on the first run.
+            fscanf(fp, "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld"
+            /*           1  2  3  4  5  6  7  8  9  10  11  12  13  14  15  16  17  18  19  20 */
+                       "%ld %llu %lu %ld %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu"
+            /*           21   22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37   */
+                       "%d %d %u %u %llu %lu %ld %lu %lu",
+            /*          38 39 40 41   42  43  44  45  46                                       */
+                   &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy,     // 10
+                   &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy,     // 20
+                   &dummy, &dummy, &dummy, &dummy, &dummy, &startcode, &dummy, &dummy, &dummy, &dummy, // 30
+                   &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy, &dummy,     // 40
+                   &dummy, &dummy, &dummy, &dummy, &start_data, &end_data);
+#pragma GCC diagnostic pop
+
+            // start_data is not really a start of DATA segment, but an end of previous segment.
+            // There are other segments before data. We need to skip them.
+            start_data = (start_data & 0xFFFFF000) + 0x00001000;
+
+            // Add start_data to offsets
+            g_current_page = (uint32_t volatile *)(start_data + (uint32_t)g_current_page);
+            g_led_status = (uint32_t volatile *)(start_data + (uint32_t)g_led_status);
+            g_current_Info_page = (uint32_t volatile *)(end_data + (uint32_t)g_current_Info_page);
+
+            fclose(fp);
+        }
+    }
+#else
+    start_data = 1;
+#endif
+
     fprintf(stderr, "notify_handler_async: %d, %d, %x\n", subsystemid, action, subaction);
+    /*
+    fprintf(stderr, "g_current_page = %d, g_led_status = %d, g_current_Info_page = %d\n",
+            *g_current_page, *g_led_status, *g_current_Info_page);
+    fprintf(stderr, "current_infopage_item = %d\n", current_infopage_item);
+    */
 
     if (subsystemid == EVT_OLED_WIFI_WAKEUP) {
         // Do NOT notify "oled" of EVT_OLED_WIFI_WAKEUP event.
@@ -384,9 +483,17 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
                 if (action == BUTTON_POWER) {
                     // button pressed
                     fprintf(stderr, "BUTTON PRESSED!\n");
+#ifdef EVERY_SCREEN_STARTS_WITH_BACK
+                    if (current_infopage_item % 2 == 0)
+                        return notify_handler_async_real(subsystemid, action, subaction);
+
+                    int current_infopage_item_process = (current_infopage_item - 1) / 2;
+#else
+                    int current_infopage_item_process = current_infopage_item;
+#endif
                     // lock buttons to prevent user intervention
                     LOCKBUTTONS(1);
-                    handle_menu_state_change(current_infopage_item);
+                    handle_menu_state_change(current_infopage_item_process);
                     leave_and_enter_menu(current_infopage_item);
                     LOCKBUTTONS(0);
                     return notify_handler_async_real(subsystemid, BUTTON_MENU, subaction);
@@ -396,7 +503,9 @@ static int notify_handler_async(int subsystemid, int action, int subaction) {
                 }
             }
         }
-        else {
+        else if (!lock_buttons) {
+            // Clear infopage only if buttons are not locked by slow script,
+            // to prevent race conditions
             current_infopage_item = 0;
         }
     }
@@ -443,10 +552,33 @@ int sprintf(char *str, const char *format, ...) {
     i = vsprintf(str, format, args);
     va_end(args);
 
-    if (format && (strcmp(format, "SSID: %s\n") == 0 ||
-        strncmp(str, "SSID0: ", 7) == 0 ||
-        strcmp(format, "PWD: %s\n") == 0 ||
-        strncmp(str, "PWD0: ", 6) == 0))
+/*
+ * Some oled executables use strings with spaces, like "SSID: %s", some
+ * without, like "SSID:%s".
+ */
+#ifdef STRINGS_WITHOUT_SPACE
+#define SSID "SSID:%s\n"
+#define SSID0 "SSID0:"
+#define PWD "PWD:%s\n"
+#define PWD0 "PWD0:"
+#define SSID1 "SSID1:"
+#define PWD1 "PWD1:"
+#define HOMEPAGE "Homepage:%s\n"
+#else
+#define SSID "SSID: %s\n"
+#define SSID0 "SSID0: "
+#define PWD "PWD: %s\n"
+#define PWD0 "PWD0: "
+#define SSID1 "SSID1: "
+#define PWD1 "PWD1: "
+// Note that Homepage is without new line
+#define HOMEPAGE "Homepage: %s"
+#endif
+
+    if (format && (strcmp(format, SSID) == 0 ||
+        strncmp(str, SSID0, sizeof(SSID0)-1) == 0 ||
+        strcmp(format, PWD) == 0 ||
+        strncmp(str, PWD0, sizeof(PWD0)-1) == 0))
     {
         // Cut SSID or password to prevent line break
         va_start(args, format);
@@ -455,8 +587,8 @@ int sprintf(char *str, const char *format, ...) {
         str[19] = '\0';
         va_end(args);
     }
-    else if (format && (strncmp(str, "SSID1: ", 7) == 0 ||
-        strncmp(str, "PWD1: ", 6) == 0))
+    else if (format && (strncmp(str, SSID1, sizeof(SSID1)-1) == 0 ||
+        strncmp(str, PWD1, sizeof(PWD1)-1) == 0))
     {
         // Remove multi-ssid information to keep everything
         // on a single screen.
@@ -464,7 +596,7 @@ int sprintf(char *str, const char *format, ...) {
     }
 
     // Hijacking "Homepage: %s" string on second information page
-    if (format && strcmp(format, "Homepage: %s") == 0) {
+    if (format && strcmp(format, HOMEPAGE) == 0) {
         // Update scripts_count variable if it's zero.
         if (!scripts_count) {
             scripts_count = sizeof(scripts) / sizeof(struct script_s);
@@ -487,9 +619,32 @@ int sprintf(char *str, const char *format, ...) {
     fprintf(stderr, "sprintf %s\n", format);
     return i;
 }
+static void save_first_info_screen() {
+    if (start_data) {
+        if (*g_current_page == PAGE_INFORMATION) {
+            if (!first_info_screen) {
+                first_info_screen = *g_current_Info_page;
+                fprintf(stderr, "Saved first screen address!\n");
+            }
+        }
+        else {
+            first_info_screen = 0;
+        }
+    }
+}
 
+
+// save_first_info_screen for V7R11
+int puts(const char *s) {
+    save_first_info_screen();
+    return printf("%s\n", s);
+}
+
+// save_first_info_screen for V7R1
 int osa_print_log_ex(char *subsystem, char *sourcefile, int line,
                      int offset, const char *message, ...) {
+    save_first_info_screen();
+
     // Uncomment to watch debug prints from oled binary.
     /*va_list args;
     va_start(args, message);
@@ -497,15 +652,13 @@ int osa_print_log_ex(char *subsystem, char *sourcefile, int line,
     vprintf(message, args);
     va_end(args);*/
 
-    if (*g_current_page == PAGE_INFORMATION) {
-        if (!first_info_screen) {
-            first_info_screen = *g_current_Info_page;
-            fprintf(stderr, "Saved first screen address!\n");
-        }
-    }
-    else {
-        first_info_screen = 0;
-    }
+    return 0;
+}
+
+// save_first_info_screen for V7R2
+int osa_printf_log_null(char *subsystem, char *sourcefile, int line,
+                     int offset, const char *message, ...) {
+    save_first_info_screen();
 
     return 0;
 }

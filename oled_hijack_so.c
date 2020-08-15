@@ -591,7 +591,7 @@ int process_sprintf(int i, char *str, const char *format, va_list args) {
     }
 
     // Hijacking "Homepage: %s" string on second information page
-    if (format && strcmp(format, HOMEPAGE) == 0) {
+    if (format && strncmp(format, HOMEPAGE, sizeof(HOMEPAGE)-1) == 0) {
         // Update scripts_count variable if it's zero.
         if (!scripts_count) {
             scripts_count = sizeof(scripts) / sizeof(struct script_s);

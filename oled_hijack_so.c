@@ -544,13 +544,8 @@ int register_notify_handler(int subsystemid, void *notify_handler_sync, void *no
     return register_notify_handler_real(subsystemid, notify_handler_sync, notify_handler_async);
 }
 
-int sprintf(char *str, const char *format, ...) {
-    int i = 0, j = 0;
-
-    va_list args;
-    va_start(args, format);
-    i = vsprintf(str, format, args);
-    va_end(args);
+int process_sprintf(int i, char *str, const char *format, va_list args) {
+    int j = 0;
 
 /*
  * Some oled executables use strings with spaces, like "SSID: %s", some
@@ -581,11 +576,11 @@ int sprintf(char *str, const char *format, ...) {
         strncmp(str, PWD0, sizeof(PWD0)-1) == 0))
     {
         // Cut SSID or password to prevent line break
-        va_start(args, format);
+        //va_start(args, format);
         i = vsnprintf(str, 19, format, args);
         str[18] = ' ';
         str[19] = '\0';
-        va_end(args);
+        //va_end(args);
     }
     else if (format && (strncmp(str, SSID1, sizeof(SSID1)-1) == 0 ||
         strncmp(str, PWD1, sizeof(PWD1)-1) == 0))
@@ -596,7 +591,7 @@ int sprintf(char *str, const char *format, ...) {
     }
 
     // Hijacking "Homepage: %s" string on second information page
-    if (format && strcmp(format, HOMEPAGE) == 0) {
+    if (format && strncmp(format, HOMEPAGE, sizeof(HOMEPAGE)-1) == 0) {
         // Update scripts_count variable if it's zero.
         if (!scripts_count) {
             scripts_count = sizeof(scripts) / sizeof(struct script_s);
@@ -619,6 +614,34 @@ int sprintf(char *str, const char *format, ...) {
     fprintf(stderr, "sprintf %s\n", format);
     return i;
 }
+int sprintf(char *str, const char *format, ...) {
+    int i = 0;
+
+    va_list args;
+    va_start(args, format);
+    i = vsprintf(str, format, args);
+    va_end(args);
+
+    va_start(args, format);
+    i = process_sprintf(i, str, format, args);
+    va_end(args);
+    return i;
+}
+int snprintf_s(char *str, size_t strsz, size_t count, const char *format, ...) {
+    int i = 0;
+
+    va_list args;
+    va_start(args, format);
+    i = vsnprintf(str, strsz, format, args);
+    va_end(args);
+
+    //For now, ignore count
+    va_start(args, format);
+    i = process_sprintf(i, str, format, args);
+    va_end(args);
+    return i;
+}
+
 static void save_first_info_screen() {
     if (start_data) {
         if (*g_current_page == PAGE_INFORMATION) {
